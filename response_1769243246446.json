@@ -1,0 +1,20 @@
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc2OTg0ODA0NiwiaWF0IjoxNzY5MjQzMjQ2LCJqdGkiOiI1YmY3NDNjOTc4Y2Q0Njk0Yjk5ODQ4OTg5NGIzZThlZCIsInVzZXJfaWQiOiIxIiwiZW1haWwiOiJhZG1pbkBvZG9vLWNhZmUuY29tIiwicm9sZSI6ImFkbWluIiwiZnVsbF9uYW1lIjoiQWRtaW4gVXNlciJ9.fZHQEwVhjafeClk-cbZdMbSV8kpDEeuq7erZ2bw30Hc",
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY5MjcyMDQ2LCJpYXQiOjE3NjkyNDMyNDYsImp0aSI6ImIzYTljNmE4MDg1MjRkZDFiYWZjYTNiMWM5ODcwZjM4IiwidXNlcl9pZCI6IjEiLCJlbWFpbCI6ImFkbWluQG9kb28tY2FmZS5jb20iLCJyb2xlIjoiYWRtaW4iLCJmdWxsX25hbWUiOiJBZG1pbiBVc2VyIn0.Oo1BRpNqCR6uTU_jsNrIYY5-xLlvTcEDQeGufBxyyNU",
+  "user": {
+    "id": 1,
+    "email": "admin@odoo-cafe.com",
+    "full_name": "Admin User",
+    "role": "admin",
+    "permissions": {
+      "can_access_pos": true,
+      "can_access_kitchen": true,
+      "can_access_reports": true,
+      "can_manage_products": true,
+      "can_manage_users": true,
+      "can_void_orders": true,
+      "can_apply_discounts": true,
+      "max_discount_percent": 100
+    }
+  }
+}

@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - DDMU Cafe{% endblock %}
+
+{% block body %}
+<div class="flex h-screen">
+    {% include 'components/sidebar.html' %}
+    
+    <main class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title="Settings" %}
+        
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <!-- Restaurant Info -->
+                <div class="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-700">
+                        <h2 class="text-lg font-semibold">
+                            <i class="fas fa-store text-primary mr-2"></i>Restaurant Information
+                        </h2>
+                    </div>
+                    <form method="post" class="p-6 space-y-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="restaurant">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Restaurant Name</label>
+                                <input type="text" name="restaurant_name" value="{{ settings.restaurant_name|default:'DDMU Cafe' }}"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Phone Number</label>
+                                <input type="tel" name="phone" value="{{ settings.phone|default:'' }}"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Address</label>
+                            <textarea name="address" rows="2"
+                                class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary resize-none">{{ settings.address|default:'' }}</textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="px-6 py-3 gradient-bg rounded-xl font-medium hover:opacity-90 transition">
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Tax Settings -->
+                <div class="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-700">
+                        <h2 class="text-lg font-semibold">
+                            <i class="fas fa-percent text-green-400 mr-2"></i>Tax Settings
+                        </h2>
+                    </div>
+                    <form method="post" class="p-6">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="tax">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tax Rate (%)</label>
+                                <input type="number" name="tax_rate" step="0.01" value="{{ settings.tax_rate|default:'5' }}"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tax Name</label>
+                                <input type="text" name="tax_name" value="{{ settings.tax_name|default:'GST' }}"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tax Number</label>
+                                <input type="text" name="tax_number" value="{{ settings.tax_number|default:'' }}"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary"
+                                    placeholder="GSTIN">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="submit" class="px-6 py-3 gradient-bg rounded-xl font-medium hover:opacity-90 transition">
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Receipt Settings -->
+                <div class="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-700">
+                        <h2 class="text-lg font-semibold">
+                            <i class="fas fa-receipt text-blue-400 mr-2"></i>Receipt Settings
+                        </h2>
+                    </div>
+                    <form method="post" class="p-6">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="receipt">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Receipt Header</label>
+                                <textarea name="receipt_header" rows="2"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary resize-none"
+                                    placeholder="Text to appear at top of receipt">{{ settings.receipt_header|default:'' }}</textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Receipt Footer</label>
+                                <textarea name="receipt_footer" rows="2"
+                                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-primary resize-none"
+                                    placeholder="Text to appear at bottom of receipt">{{ settings.receipt_footer|default:'Thank you for dining with us!' }}</textarea>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="print_auto" {% if settings.print_auto %}checked{% endif %}
+                                        class="w-5 h-5 rounded bg-gray-700 border-gray-600 text-primary focus:ring-primary">
+                                    <span>Auto-print receipt after payment</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="submit" class="px-6 py-3 gradient-bg rounded-xl font-medium hover:opacity-90 transition">
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- User Management -->
+                <div class="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">
+                            <i class="fas fa-users-cog text-purple-400 mr-2"></i>User Management
+                        </h2>
+                        <a href="{% url 'admin:authentication_user_add' %}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm">
+                            <i class="fas fa-user-plus mr-2"></i>Add User
+                        </a>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-3">
+                            {% for user in users %}
+                            <div class="flex items-center justify-between p-4 bg-gray-700/50 rounded-xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center font-bold">
+                                        {{ user.first_name|slice:":1"|upper|default:user.email|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">{{ user.get_full_name|default:user.email }}</p>
+                                        <p class="text-sm text-gray-400">{{ user.role|default:'Staff' }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 rounded-full text-xs
+                                        {% if user.is_active %}bg-green-500/20 text-green-400{% else %}bg-red-500/20 text-red-400{% endif %}">
+                                        {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                    <a href="{% url 'admin:authentication_user_change' user.id %}" 
+                                       class="p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-center text-gray-500 py-4">No users found</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div class="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-700">
+                        <h2 class="text-lg font-semibold">
+                            <i class="fas fa-link text-yellow-400 mr-2"></i>Quick Links
+                        </h2>
+                    </div>
+                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <a href="/admin/" class="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition">
+                            <i class="fas fa-tools text-2xl mb-2 block text-blue-400"></i>
+                            <span class="text-sm">Django Admin</span>
+                        </a>
+                        <a href="/api/docs/" class="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition">
+                            <i class="fas fa-book text-2xl mb-2 block text-green-400"></i>
+                            <span class="text-sm">API Docs</span>
+                        </a>
+                        <a href="{% url 'product_list' %}" class="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition">
+                            <i class="fas fa-box text-2xl mb-2 block text-orange-400"></i>
+                            <span class="text-sm">Manage Products</span>
+                        </a>
+                        <a href="{% url 'table_list' %}" class="p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition">
+                            <i class="fas fa-chair text-2xl mb-2 block text-purple-400"></i>
+                            <span class="text-sm">Manage Tables</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,727 @@
+{% extends 'base.html' %}
+
+{% block title %}POS Terminal - Odoo Cafe POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        background: #1f2937;
+        border-radius: 16px;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        min-height: 13.5rem;
+        overflow: hidden;
+    }
+    .product-card:hover {
+        transform: translateY(-2px);
+        border-color: #f97316;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+    .product-card.unavailable {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .cart-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #374151;
+        border-radius: 12px;
+        margin-bottom: 0.5rem;
+    }
+    .cat-btn {
+        padding: 0.625rem 1.25rem;
+        background: #374151;
+        border-radius: 9999px;
+        white-space: nowrap;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+    }
+    .cat-btn:hover { background: #4b5563; }
+    .cat-btn.active { background: linear-gradient(135deg, #f97316, #ec4899); }
+    
+    .pay-method {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    .pay-method:hover {
+        background: #4b5563 !important;
+        transform: scale(1.05);
+    }
+    .pay-method.active {
+        background: #065f46 !important;
+        border-color: #10b981 !important;
+        border-width: 2px !important;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+    }
+    .pay-method.active::after {
+        content: '✓';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        background: #10b981;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="flex h-screen">
+    {% include 'components/sidebar.html' %}
+    
+    <main class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title="Point of Sale" show_session=True %}
+        
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Products Area -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <!-- Categories -->
+                <div class="flex gap-2 p-4 overflow-x-auto bg-gray-800/50 shrink-0">
+                    <button onclick="filterCategory(null)" class="cat-btn {% if not selected_category %}active{% endif %}" data-cat="all">
+                        <i class="fas fa-th mr-2"></i>All Items
+                    </button>
+                    {% for category in categories %}
+                    <button onclick="filterCategory('{{ category.id }}')" class="cat-btn {% if selected_category == category.id|stringformat:'s' %}active{% endif %}" data-cat="{{ category.id }}">
+                        {{ category.name }}
+                    </button>
+                    {% endfor %}
+                </div>
+                
+                <!-- Search -->
+                <div class="px-4 py-3 shrink-0">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <input type="text" id="productSearch" placeholder="Search products..."
+                            class="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent">
+                    </div>
+                </div>
+                
+                <!-- Products Grid -->
+                <div id="productsGrid" class="products-grid flex-1 p-4 overflow-y-auto content-start">
+                    {% for product in products %}
+                    <div class="product-card {% if not product.is_available_for_pos %}unavailable{% endif %}" 
+                         onclick="addToCart('{{ product.id }}', '{{ product.name|escapejs }}', {{ product.price }})">
+                        <div class="w-full h-28 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center overflow-hidden shrink-0">
+                            {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-cover block">
+                            {% else %}
+                            <i class="fas fa-utensils text-2xl text-gray-500"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 flex flex-col justify-between min-h-0">
+                            <p class="font-semibold text-sm leading-tight line-clamp-2">{{ product.name }}</p>
+                            <p class="text-green-400 font-bold text-base mt-auto pt-1">₹{{ product.price|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-span-full text-center py-12 text-gray-500">
+                        <i class="fas fa-box-open text-5xl mb-4"></i>
+                        <p>No products available</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Cart Area -->
+            <div class="w-96 bg-gray-800 flex flex-col border-l border-gray-700 shrink-0">
+                <!-- Cart Header -->
+                <div class="p-4 border-b border-gray-700 shrink-0">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-lg">Current Order</h3>
+                        <span id="orderNum" class="text-sm text-gray-400">#NEW</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="orderType" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
+                            <option value="dine_in">🍽️ Dine In</option>
+                            <option value="takeaway">🥡 Takeaway</option>
+                            <option value="delivery">🚚 Delivery</option>
+                        </select>
+                        <select id="tableSelect" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
+                            <option value="">Select Table</option>
+                            {% for table in tables %}
+                            <option value="{{ table.id }}">{{ table.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Cart Items -->
+                <div id="cartItems" class="flex-1 overflow-y-auto p-4">
+                    <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                        <i class="fas fa-shopping-basket text-5xl mb-4"></i>
+                        <p>Your cart is empty</p>
+                        <p class="text-sm">Add items to get started</p>
+                    </div>
+                </div>
+                
+                <!-- Cart Summary -->
+                <div class="p-4 bg-gray-700/50 border-t border-gray-700 space-y-2 shrink-0">
+                    <div class="flex justify-between text-sm text-gray-400">
+                        <span>Subtotal</span>
+                        <span id="subtotal">₹0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-400">
+                        <span>Tax</span>
+                        <span id="tax">₹0.00</span>
+                    </div>
+                    <div id="discountRow" class="hidden justify-between text-sm text-green-400">
+                        <span>Discount</span>
+                        <span id="discount">-₹0.00</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-bold pt-2 border-t border-gray-600">
+                        <span>Total</span>
+                        <span id="total">₹0.00</span>
+                    </div>
+                </div>
+                
+                <!-- Cart Actions -->
+                <div class="p-4 border-t border-gray-700 space-y-3 shrink-0">
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="clearCart()" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button onclick="holdOrder()" class="py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition">
+                            <i class="fas fa-pause"></i>
+                        </button>
+                        <button onclick="applyDiscount()" class="py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition">
+                            <i class="fas fa-percent"></i>
+                        </button>
+                    </div>
+                    <button onclick="openPayment()" id="payBtn" disabled
+                        class="w-full py-4 gradient-bg hover:opacity-90 rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.75rem;
+        align-content: start;
+    }
+
+    @media (min-width: 1536px) {
+        .products-grid {
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .products-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+    }
+</style>
+
+<!-- Payment Modal -->
+<div id="paymentModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closePayment()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between p-5 border-b border-gray-700">
+            <h2 class="text-xl font-semibold"><i class="fas fa-credit-card mr-2"></i>Payment</h2>
+            <button onclick="closePayment()" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <div class="p-6">
+            <div class="text-center mb-6">
+                <p class="text-gray-400">Amount Due</p>
+                <p id="payAmount" class="text-5xl font-bold text-green-400">₹0.00</p>
+            </div>
+            <div id="payMethods" class="grid grid-cols-3 gap-3 mb-6">
+                <button type="button" class="pay-method p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition-all border-2 border-transparent cursor-pointer" data-method="cash" data-id="">
+                    <i class="fas fa-money-bill-wave text-2xl mb-2 block"></i>
+                    <span class="text-sm font-medium">Cash</span>
+                </button>
+                <button type="button" class="pay-method p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition-all border-2 border-transparent cursor-pointer" data-method="card" data-id="">
+                    <i class="fas fa-credit-card text-2xl mb-2 block"></i>
+                    <span class="text-sm font-medium">Card</span>
+                </button>
+                <button type="button" class="pay-method p-4 bg-gray-700 hover:bg-gray-600 rounded-xl text-center transition-all border-2 border-transparent cursor-pointer" data-method="upi" data-id="">
+                    <i class="fas fa-mobile-alt text-2xl mb-2 block"></i>
+                    <span class="text-sm font-medium">UPI</span>
+                </button>
+            </div>
+            
+            <!-- Cash Payment Fields -->
+            <div id="cashFields" class="payment-fields">
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-400 mb-2">Amount Received</label>
+                    <input type="number" id="receivedAmount" oninput="updateChange()"
+                        class="w-full px-4 py-4 text-2xl text-center bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="flex justify-between items-center mb-6 text-lg">
+                    <span class="text-gray-400">Change:</span>
+                    <span id="changeAmount" class="text-2xl font-bold text-blue-400">₹0.00</span>
+                </div>
+                <div class="grid grid-cols-5 gap-2 mb-6">
+                    <button onclick="addAmount(50)" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg">+₹50</button>
+                    <button onclick="addAmount(100)" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg">+₹100</button>
+                    <button onclick="addAmount(200)" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg">+₹200</button>
+                    <button onclick="addAmount(500)" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg">+₹500</button>
+                    <button onclick="setExact()" class="py-3 bg-blue-600 hover:bg-blue-700 rounded-lg">Exact</button>
+                </div>
+            </div>
+            
+            <!-- Card Payment Fields -->
+            <div id="cardFields" class="payment-fields hidden">
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Card Number</label>
+                        <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19"
+                            oninput="formatCardNumber(this)"
+                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Expiry Date</label>
+                            <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5"
+                                oninput="formatCardExpiry(this)"
+                                class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">CVV</label>
+                            <input type="text" id="cardCVV" placeholder="123" maxlength="4"
+                                oninput="this.value = this.value.replace(/\D/g, '')"
+                                class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">Cardholder Name</label>
+                        <input type="text" id="cardName" placeholder="JOHN DOE"
+                            oninput="this.value = this.value.toUpperCase()"
+                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- UPI Payment Fields -->
+            <div id="upiFields" class="payment-fields hidden">
+                <div class="text-center">
+                    <p class="text-sm text-gray-400 mb-3">Scan QR code to pay</p>
+                    <div id="upiQRCode" class="bg-white p-3 rounded-xl inline-block">
+                        <div class="w-30 h-30 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin text-3xl text-gray-400"></i>
+                        </div>
+                    </div>
+                    <p class="text-lg font-bold mt-3 mb-4" id="upiAmount">₹0.00</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-3 p-5 border-t border-gray-700">
+            <button onclick="closePayment()" class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl">Cancel</button>
+            <button onclick="completePayment()" class="flex-1 py-3 gradient-bg hover:opacity-90 rounded-xl font-bold">
+                <i class="fas fa-check mr-2"></i>Complete
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Cart state
+    let cart = [];
+    let selectedPayMethod = 'cash';
+    let selectedPayMethodId = null;
+    let discountAmount = 0;
+    const TAX_RATE = 0.05;
+    
+    // Add to cart
+    function addToCart(id, name, price) {
+        const existing = cart.find(item => item.id === id);
+        if (existing) {
+            existing.qty++;
+        } else {
+            cart.push({ id, name, price: parseFloat(price), qty: 1 });
+        }
+        renderCart();
+        showToast(`${name} added`, 'success');
+    }
+    
+    // Update quantity
+    function updateQty(id, delta) {
+        const item = cart.find(i => i.id === id);
+        if (item) {
+            item.qty += delta;
+            if (item.qty <= 0) {
+                cart = cart.filter(i => i.id !== id);
+            }
+        }
+        renderCart();
+    }
+    
+    // Remove from cart
+    function removeItem(id) {
+        cart = cart.filter(i => i.id !== id);
+        renderCart();
+    }
+    
+    // Clear cart
+    function clearCart() {
+        if (cart.length === 0) return;
+        if (confirm('Clear all items?')) {
+            cart = [];
+            discountAmount = 0;
+            renderCart();
+        }
+    }
+    
+    // Render cart
+    function renderCart() {
+        const container = document.getElementById('cartItems');
+        const payBtn = document.getElementById('payBtn');
+        
+        if (cart.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                    <i class="fas fa-shopping-basket text-5xl mb-4"></i>
+                    <p>Your cart is empty</p>
+                </div>`;
+            payBtn.disabled = true;
+        } else {
+            container.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium truncate">${item.name}</p>
+                        <p class="text-sm text-gray-400">₹${item.price.toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="updateQty('${item.id}', -1)" class="w-7 h-7 bg-gray-600 hover:bg-gray-500 rounded flex items-center justify-center">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <span class="w-8 text-center font-semibold">${item.qty}</span>
+                        <button onclick="updateQty('${item.id}', 1)" class="w-7 h-7 bg-gray-600 hover:bg-gray-500 rounded flex items-center justify-center">
+                            <i class="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="text-right w-20">
+                        <p class="font-semibold text-green-400">₹${(item.price * item.qty).toFixed(2)}</p>
+                    </div>
+                    <button onclick="removeItem('${item.id}')" class="text-gray-500 hover:text-red-400">
+                        <i class="fas fa-trash text-sm"></i>
+                    </button>
+                </div>
+            `).join('');
+            payBtn.disabled = false;
+        }
+        updateTotals();
+    }
+    
+    // Update totals
+    function updateTotals() {
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const tax = subtotal * TAX_RATE;
+        const total = subtotal + tax - discountAmount;
+        
+        document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+        document.getElementById('tax').textContent = `₹${tax.toFixed(2)}`;
+        document.getElementById('total').textContent = `₹${total.toFixed(2)}`;
+        
+        const discountRow = document.getElementById('discountRow');
+        if (discountAmount > 0) {
+            discountRow.classList.remove('hidden');
+            discountRow.classList.add('flex');
+            document.getElementById('discount').textContent = `-₹${discountAmount.toFixed(2)}`;
+        } else {
+            discountRow.classList.add('hidden');
+        }
+    }
+    
+    function getTotal() {
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        return subtotal + (subtotal * TAX_RATE) - discountAmount;
+    }
+    
+    // Discount
+    function applyDiscount() {
+        const amount = prompt('Enter discount amount:');
+        if (amount && !isNaN(amount)) {
+            discountAmount = parseFloat(amount);
+            updateTotals();
+            showToast(`Discount of ₹${discountAmount} applied`, 'success');
+        }
+    }
+    
+    // Payment modal
+    function openPayment() {
+        if (cart.length === 0) return;
+        document.getElementById('payAmount').textContent = `₹${getTotal().toFixed(2)}`;
+        document.getElementById('receivedAmount').value = '';
+        document.getElementById('changeAmount').textContent = '₹0.00';
+        document.getElementById('paymentModal').classList.remove('hidden');
+        
+        // Setup click handlers for payment method buttons
+        document.querySelectorAll('.pay-method').forEach(btn => {
+            btn.onclick = function() {
+                const method = this.getAttribute('data-method');
+                const methodId = this.getAttribute('data-id');
+                selectPayMethod(method, methodId);
+            };
+        });
+        
+        // Select first payment method by default (cash)
+        selectPayMethod('cash', null);
+    }
+    
+    function closePayment() {
+        document.getElementById('paymentModal').classList.add('hidden');
+    }
+    
+    function selectPayMethod(method, methodId = null) {
+        console.log('Selecting payment method:', method, 'ID:', methodId);
+        
+        selectedPayMethod = method;
+        selectedPayMethodId = methodId;
+        
+        // Remove active state from all buttons
+        document.querySelectorAll('.pay-method').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Add active state to selected button
+        const selected = document.querySelector(`.pay-method[data-method="${method}"]`);
+        if (selected) {
+            selected.classList.add('active');
+            console.log('Applied active class to button:', method);
+        } else {
+            console.error('Could not find button for method:', method);
+        }
+        
+        // Show/hide payment fields based on method
+        document.getElementById('cashFields').classList.add('hidden');
+        document.getElementById('cardFields').classList.add('hidden');
+        document.getElementById('upiFields').classList.add('hidden');
+        
+        if (method === 'cash') {
+            document.getElementById('cashFields').classList.remove('hidden');
+            console.log('Showing cash fields');
+        } else if (method === 'card') {
+            document.getElementById('cardFields').classList.remove('hidden');
+            console.log('Showing card fields');
+        } else if (method === 'upi') {
+            document.getElementById('upiFields').classList.remove('hidden');
+            console.log('Showing UPI fields');
+            generateUPIQR();
+        }
+    }
+    
+    // Generate UPI QR Code
+    async function generateUPIQR() {
+        const total = getTotal();
+        document.getElementById('upiAmount').textContent = `₹${total.toFixed(2)}`;
+        
+        try {
+            const response = await fetch('/api/v1/payments/upi/generate-qr/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ 
+                    amount: total
+                })
+            });
+            
+            const data = await response.json();
+            if (data.qr_image) {
+                document.getElementById('upiQRCode').innerHTML = `<img src="${data.qr_image}" alt="UPI QR Code" class="w-40 h-40">`;
+            }
+        } catch (error) {
+            console.error('Error generating UPI QR:', error);
+            document.getElementById('upiQRCode').innerHTML = '<p class="text-red-400">Failed to generate QR code</p>';
+        }
+    }
+    
+    // Format card number with spaces
+    function formatCardNumber(input) {
+        let value = input.value.replace(/\s/g, '');
+        value = value.replace(/\D/g, '');
+        value = value.substring(0, 16);
+        const parts = value.match(/.{1,4}/g);
+        input.value = parts ? parts.join(' ') : value;
+    }
+    
+    // Format card expiry as MM/YY
+    function formatCardExpiry(input) {
+        let value = input.value.replace(/\D/g, '');
+        if (value.length >= 2) {
+            value = value.substring(0, 2) + '/' + value.substring(2, 4);
+        }
+        input.value = value;
+    }
+    
+    function addAmount(amount) {
+        const input = document.getElementById('receivedAmount');
+        input.value = (parseFloat(input.value) || 0) + amount;
+        updateChange();
+    }
+    
+    function setExact() {
+        document.getElementById('receivedAmount').value = getTotal().toFixed(2);
+        updateChange();
+    }
+    
+    function updateChange() {
+        const received = parseFloat(document.getElementById('receivedAmount').value) || 0;
+        const change = received - getTotal();
+        document.getElementById('changeAmount').textContent = `₹${Math.max(0, change).toFixed(2)}`;
+    }
+    
+    // Complete payment
+    async function completePayment() {
+        const total = getTotal();
+        
+        // Validate based on payment method
+        if (selectedPayMethod === 'cash') {
+            const received = parseFloat(document.getElementById('receivedAmount').value) || 0;
+            if (received < total) {
+                showToast('Insufficient amount', 'error');
+                return;
+            }
+        } else if (selectedPayMethod === 'card') {
+            const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const cardExpiry = document.getElementById('cardExpiry').value;
+            const cardCVV = document.getElementById('cardCVV').value;
+            const cardName = document.getElementById('cardName').value;
+            
+            if (!cardNumber || cardNumber.length < 15) {
+                showToast('Invalid card number', 'error');
+                return;
+            }
+            if (!cardExpiry || cardExpiry.length < 5) {
+                showToast('Invalid expiry date', 'error');
+                return;
+            }
+            if (!cardCVV || cardCVV.length < 3) {
+                showToast('Invalid CVV', 'error');
+                return;
+            }
+            if (!cardName) {
+                showToast('Cardholder name is required', 'error');
+                return;
+            }
+        } else if (selectedPayMethod === 'upi') {
+            // UPI payment - transaction ID is optional
+        }
+        
+        const received = selectedPayMethod === 'cash' 
+            ? parseFloat(document.getElementById('receivedAmount').value) || 0
+            : total;
+        
+        const orderData = {
+            order_type: document.getElementById('orderType').value,
+            table_id: document.getElementById('tableSelect').value || null,
+            items: cart.map(item => ({
+                product_id: item.id,
+                quantity: item.qty
+            })),
+            payment_method: selectedPayMethod,
+            payment_method_id: selectedPayMethodId,
+            amount_received: received,
+            discount: discountAmount
+        };
+        
+        // Add payment-specific data
+        if (selectedPayMethod === 'card') {
+            orderData.card_last_four = document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4);
+            orderData.cardholder_name = document.getElementById('cardName').value;
+        }
+        
+        try {
+            const result = await apiRequest('{% url "pos_create_order" %}', 'POST', orderData);
+            closePayment();
+            cart = [];
+            discountAmount = 0;
+            selectedPayMethodId = null;
+            renderCart();
+            showToast(`Order #${result.order_number} completed!`, 'success');
+        } catch (error) {
+            console.error('Payment error:', error);
+        }
+    }
+    
+    // Hold order
+    async function holdOrder() {
+        if (cart.length === 0) {
+            showToast('Cart is empty', 'error');
+            return;
+        }
+        
+        const orderData = {
+            order_type: document.getElementById('orderType').value,
+            table_id: document.getElementById('tableSelect').value || null,
+            items: cart.map(item => ({
+                product_id: item.id,
+                quantity: item.qty
+            })),
+            status: 'draft'
+        };
+        
+        try {
+            await apiRequest('{% url "pos_create_order" %}', 'POST', orderData);
+            cart = [];
+            discountAmount = 0;
+            renderCart();
+            showToast('Order saved as draft', 'success');
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    
+    // Filter category
+    function filterCategory(categoryId) {
+        document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+        if (categoryId === null) {
+            document.querySelector('.cat-btn[data-cat="all"]').classList.add('active');
+            window.location.href = "{% url 'pos_terminal' %}";
+        } else {
+            document.querySelector(`.cat-btn[data-cat="${categoryId}"]`)?.classList.add('active');
+            window.location.href = "{% url 'pos_terminal' %}?category=" + categoryId;
+        }
+    }
+    
+    // Search
+    document.getElementById('productSearch')?.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.product-card').forEach(card => {
+            const name = card.querySelector('p').textContent.toLowerCase();
+            card.style.display = name.includes(query) ? 'flex' : 'none';
+        });
+    });
+    
+    // Listen for chatbot product selections
+    window.addEventListener('chatbotAddProduct', function(e) {
+        const { productId, productName, price } = e.detail;
+        // Find the product and add to cart
+        const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+        if (productCard) {
+            productCard.click();
+        } else {
+            // Fallback: add directly to cart
+            addToCart({
+                id: productId,
+                name: productName,
+                price: parseFloat(price)
+            });
+        }
+    });
+</script>
+{% endblock %}

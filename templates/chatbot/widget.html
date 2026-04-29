@@ -1,0 +1,416 @@
+<!-- Chatbot Widget - Mini POS System -->
+{# Usage: include 'chatbot/widget.html' #}
+
+<!-- Chatbot Toggle Button with Cart Badge -->
+<button id="chatbotToggle" 
+        class="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center text-white hover:shadow-xl transition-all duration-300 z-50 hover:scale-110"
+        onclick="toggleChatbot()">
+    <i class="fas fa-shopping-bag text-xl"></i>
+    <span id="cartBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-bold">0</span>
+</button>
+
+<!-- Chatbot Panel -->
+<div id="chatbotPanel" class="fixed bottom-24 right-6 w-[420px] h-[650px] bg-gray-800 rounded-2xl shadow-2xl hidden z-50 flex flex-col overflow-hidden border border-gray-700">
+    <!-- Header with Tabs -->
+    <div class="bg-gradient-to-r from-orange-500 to-pink-500 p-3">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-store text-white text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white text-sm">DDMU Cafe</h3>
+                    <span class="text-xs text-white/80">Quick Order</span>
+                </div>
+            </div>
+            <button onclick="toggleChatbot()" class="text-white/80 hover:text-white transition-colors">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <!-- Tabs -->
+        <div class="flex gap-1 bg-white/10 rounded-lg p-1">
+            <button onclick="switchTab('menu')" id="tabMenu" class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all text-white bg-white/20">
+                <i class="fas fa-utensils mr-1"></i> Menu
+            </button>
+            <button onclick="switchTab('cart')" id="tabCart" class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all text-white/70 hover:text-white">
+                <i class="fas fa-shopping-cart mr-1"></i> Cart (<span id="cartCountTab">0</span>)
+            </button>
+            <button onclick="switchTab('chat')" id="tabChat" class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all text-white/70 hover:text-white">
+                <i class="fas fa-comments mr-1"></i> Chat
+            </button>
+        </div>
+    </div>
+
+    <!-- Menu Tab Content -->
+    <div id="menuContent" class="flex-1 flex flex-col overflow-hidden">
+        <!-- Search Bar -->
+        <div class="p-3 border-b border-gray-700">
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="text" id="menuSearch" 
+                       class="w-full bg-gray-700 text-white rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-400"
+                       placeholder="Search menu..."
+                       oninput="filterMenu(this.value)">
+            </div>
+        </div>
+        
+        <!-- Categories -->
+        <div id="categoriesContainer" class="flex gap-2 p-3 overflow-x-auto border-b border-gray-700 scrollbar-hide">
+            <button onclick="filterByCategory('all')" class="category-btn active px-3 py-1.5 bg-orange-500 text-white rounded-full text-xs whitespace-nowrap transition-colors" data-category="all">
+                All
+            </button>
+        </div>
+        
+        <!-- Products Grid -->
+        <div id="menuProducts" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2 auto-rows-min">
+            <div class="col-span-2 flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Tab Content -->
+    <div id="cartContent" class="flex-1 flex-col overflow-hidden hidden">
+        <div id="cartItems" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+        
+        <!-- Cart Empty State -->
+        <div id="cartEmpty" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
+            <i class="fas fa-shopping-cart text-4xl mb-3 opacity-50"></i>
+            <p class="text-sm">Your cart is empty</p>
+            <button onclick="switchTab('menu')" class="mt-3 text-orange-400 text-sm hover:underline">Browse Menu</button>
+        </div>
+        
+        <!-- Cart Summary -->
+        <div id="cartSummary" class="hidden border-t border-gray-700 p-4 bg-gray-850">
+            <div class="space-y-2 mb-4">
+                <div class="flex justify-between text-sm text-gray-300">
+                    <span>Subtotal</span>
+                    <span id="cartSubtotal">₹0.00</span>
+                </div>
+                <div class="flex justify-between text-sm text-gray-300">
+                    <span>Tax (5%)</span>
+                    <span id="cartTax">₹0.00</span>
+                </div>
+                <div class="flex justify-between text-lg font-bold text-white pt-2 border-t border-gray-700">
+                    <span>Total</span>
+                    <span id="cartTotal">₹0.00</span>
+                </div>
+            </div>
+            <button onclick="placeOrder()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                <i class="fas fa-check"></i> Place Order
+            </button>
+        </div>
+    </div>
+
+    <!-- Chat Tab Content -->
+    <div id="chatContent" class="flex-1 flex-col overflow-hidden hidden">
+        <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="bg-gray-700 rounded-2xl rounded-tl-none p-3 max-w-[80%]">
+                    <p class="text-sm text-gray-200">👋 Hi! Need help ordering? Ask me anything!</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2 ml-11">
+                <button onclick="askChatbot('Show popular items')" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-gray-300 transition-colors">
+                    <i class="fas fa-star mr-1"></i> Popular
+                </button>
+                <button onclick="askChatbot('Recommend for 5 people')" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-gray-300 transition-colors">
+                    <i class="fas fa-users mr-1"></i> Team Order
+                </button>
+                <button onclick="askChatbot('Show vegetarian options')" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs text-gray-300 transition-colors">
+                    <i class="fas fa-leaf mr-1"></i> Veg Only
+                </button>
+            </div>
+        </div>
+        <div class="p-3 border-t border-gray-700 bg-gray-850">
+            <div class="flex gap-2">
+                <input type="text" id="chatInput" 
+                       class="flex-1 bg-gray-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-400"
+                       placeholder="Ask about menu..."
+                       onkeypress="if(event.key==='Enter')sendChatMessage()">
+                <button onclick="sendChatMessage()" class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 rounded-xl hover:opacity-90 transition-opacity">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chatbot Styles -->
+<style>
+    #chatbotPanel { animation: slideUp 0.3s ease; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .category-btn { transition: all 0.2s; }
+    .category-btn.active { background: #f97316; color: white; }
+    .category-btn:not(.active) { background: #374151; color: #9ca3af; }
+    .category-btn:not(.active):hover { background: #4b5563; }
+    .product-card { background: linear-gradient(135deg, #374151, #1f2937); border: 1px solid #4b5563; border-radius: 12px; overflow: hidden; transition: all 0.2s; }
+    .product-card:hover { border-color: #f97316; transform: translateY(-2px); }
+    .cart-item { background: #374151; border-radius: 10px; padding: 12px; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .qty-btn:hover { transform: scale(1.1); }
+    .bg-gray-850 { background-color: #1a202c; }
+    .typing-indicator span { display: inline-block; width: 8px; height: 8px; margin: 0 2px; background: #9ca3af; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+</style>
+
+<!-- Chatbot JavaScript -->
+<script>
+    const miniPOS = { cart: [], products: [], categories: [], currentCategory: 'all', sessionId: null, isOpen: false };
+    
+    function toggleChatbot() {
+        const panel = document.getElementById('chatbotPanel');
+        miniPOS.isOpen = !miniPOS.isOpen;
+        if (miniPOS.isOpen) {
+            panel.classList.remove('hidden');
+            panel.classList.add('flex');
+            document.getElementById('chatbotToggle').innerHTML = '<i class="fas fa-times text-xl"></i>';
+            loadMenu();
+        } else {
+            panel.classList.add('hidden');
+            panel.classList.remove('flex');
+            updateToggleButton();
+        }
+    }
+    
+    function updateToggleButton() {
+        const count = miniPOS.cart.reduce((sum, item) => sum + item.quantity, 0);
+        document.getElementById('chatbotToggle').innerHTML = `<i class="fas fa-shopping-bag text-xl"></i><span id="cartBadge" class="${count > 0 ? '' : 'hidden'} absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center font-bold">${count}</span>`;
+    }
+    
+    function switchTab(tab) {
+        ['menu', 'cart', 'chat'].forEach(t => {
+            document.getElementById(`${t}Content`).classList.add('hidden');
+            document.getElementById(`${t}Content`).classList.remove('flex');
+            document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.remove('bg-white/20');
+            document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('text-white/70');
+        });
+        document.getElementById(`${tab}Content`).classList.remove('hidden');
+        document.getElementById(`${tab}Content`).classList.add('flex');
+        document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('bg-white/20');
+        document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.remove('text-white/70');
+        if (tab === 'cart') updateCartUI();
+    }
+    
+    async function loadMenu() {
+        try {
+            const response = await fetch('/api/v1/chatbot/menu/');
+            const data = await response.json();
+            miniPOS.products = data.products || [];
+            miniPOS.categories = [...new Set(miniPOS.products.map(p => p.category).filter(Boolean))];
+            renderCategories();
+            renderProducts();
+        } catch (error) {
+            console.error('Failed to load menu:', error);
+            document.getElementById('menuProducts').innerHTML = `<div class="col-span-2 text-center py-8 text-gray-400"><i class="fas fa-exclamation-circle text-2xl mb-2"></i><p class="text-sm">Failed to load menu</p><button onclick="loadMenu()" class="mt-2 text-orange-400 text-sm hover:underline">Retry</button></div>`;
+        }
+    }
+    
+    function renderCategories() {
+        let html = `<button onclick="filterByCategory('all')" class="category-btn ${miniPOS.currentCategory === 'all' ? 'active' : ''} px-3 py-1.5 rounded-full text-xs whitespace-nowrap">All</button>`;
+        miniPOS.categories.forEach(cat => {
+            html += `<button onclick="filterByCategory('${cat}')" class="category-btn ${miniPOS.currentCategory === cat ? 'active' : ''} px-3 py-1.5 rounded-full text-xs whitespace-nowrap">${cat}</button>`;
+        });
+        document.getElementById('categoriesContainer').innerHTML = html;
+    }
+    
+    function filterByCategory(category) { miniPOS.currentCategory = category; renderCategories(); renderProducts(); }
+    function filterMenu(query) { renderProducts(query.toLowerCase()); }
+    
+    function renderProducts(searchQuery = '') {
+        const container = document.getElementById('menuProducts');
+        let products = miniPOS.products;
+        if (miniPOS.currentCategory !== 'all') products = products.filter(p => p.category === miniPOS.currentCategory);
+        if (searchQuery) products = products.filter(p => p.name.toLowerCase().includes(searchQuery) || (p.description && p.description.toLowerCase().includes(searchQuery)));
+        
+        if (products.length === 0) {
+            container.innerHTML = `<div class="col-span-2 text-center py-8 text-gray-400"><i class="fas fa-search text-2xl mb-2"></i><p class="text-sm">No products found</p></div>`;
+            return;
+        }
+        
+        container.innerHTML = products.map(product => {
+            const inCart = miniPOS.cart.find(item => item.id === product.id);
+            const qty = inCart ? inCart.quantity : 0;
+            return `
+                <div class="product-card" data-product-id="${product.id}">
+                    ${product.image ? `<div class="h-20 bg-gray-700 overflow-hidden"><img src="${product.image}" alt="${escapeHtml(product.name)}" class="w-full h-full object-cover"></div>` : `<div class="h-20 bg-gray-700 flex items-center justify-center"><i class="fas fa-utensils text-gray-500 text-xl"></i></div>`}
+                    <div class="p-2">
+                        <h4 class="text-xs font-medium text-white truncate" title="${escapeHtml(product.name)}">${escapeHtml(product.name)}</h4>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-orange-400 font-bold text-sm">₹${product.price.toFixed(0)}</span>
+                            ${qty > 0 ? `
+                                <div class="flex items-center gap-1">
+                                    <button onclick="event.stopPropagation(); updateCartQty('${product.id}', -1)" class="qty-btn bg-gray-600 text-white text-xs"><i class="fas fa-minus text-[10px]"></i></button>
+                                    <span class="text-white text-xs w-5 text-center">${qty}</span>
+                                    <button onclick="event.stopPropagation(); updateCartQty('${product.id}', 1)" class="qty-btn bg-orange-500 text-white text-xs"><i class="fas fa-plus text-[10px]"></i></button>
+                                </div>
+                            ` : `<button onclick="event.stopPropagation(); addToCart('${product.id}')" class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded-lg text-xs transition-colors"><i class="fas fa-plus"></i></button>`}
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+    
+    function addToCart(productId) {
+        const product = miniPOS.products.find(p => p.id === productId);
+        if (!product) return;
+        const existing = miniPOS.cart.find(item => item.id === productId);
+        if (existing) { existing.quantity++; } else { miniPOS.cart.push({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1 }); }
+        updateCartCount();
+        renderProducts(document.getElementById('menuSearch').value.toLowerCase());
+        showToast(`${product.name} added!`, 'success');
+    }
+    
+    function updateCartQty(productId, delta) {
+        const item = miniPOS.cart.find(i => i.id === productId);
+        if (!item) return;
+        item.quantity += delta;
+        if (item.quantity <= 0) miniPOS.cart = miniPOS.cart.filter(i => i.id !== productId);
+        updateCartCount();
+        renderProducts(document.getElementById('menuSearch').value.toLowerCase());
+        updateCartUI();
+    }
+    
+    function updateCartCount() {
+        const count = miniPOS.cart.reduce((sum, item) => sum + item.quantity, 0);
+        document.getElementById('cartCountTab').textContent = count;
+        const badge = document.getElementById('cartBadge');
+        if (badge) { if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); } }
+    }
+    
+    function updateCartUI() {
+        const itemsContainer = document.getElementById('cartItems');
+        const emptyState = document.getElementById('cartEmpty');
+        const summary = document.getElementById('cartSummary');
+        
+        if (miniPOS.cart.length === 0) {
+            itemsContainer.innerHTML = '';
+            emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
+            summary.classList.add('hidden');
+            return;
+        }
+        emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
+        summary.classList.remove('hidden');
+        
+        itemsContainer.innerHTML = miniPOS.cart.map(item => `
+            <div class="cart-item flex gap-3">
+                ${item.image ? `<img src="${item.image}" alt="${escapeHtml(item.name)}" class="w-14 h-14 rounded-lg object-cover">` : `<div class="w-14 h-14 rounded-lg bg-gray-600 flex items-center justify-center"><i class="fas fa-utensils text-gray-400"></i></div>`}
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-medium text-white truncate">${escapeHtml(item.name)}</h4>
+                    <p class="text-orange-400 text-sm font-bold">₹${(item.price * item.quantity).toFixed(0)}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="updateCartQty('${item.id}', -1)" class="qty-btn bg-gray-600 text-white"><i class="fas fa-minus text-xs"></i></button>
+                    <span class="text-white text-sm w-6 text-center">${item.quantity}</span>
+                    <button onclick="updateCartQty('${item.id}', 1)" class="qty-btn bg-orange-500 text-white"><i class="fas fa-plus text-xs"></i></button>
+                </div>
+            </div>
+        `).join('');
+        
+        const subtotal = miniPOS.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const tax = subtotal * 0.05;
+        document.getElementById('cartSubtotal').textContent = `₹${subtotal.toFixed(2)}`;
+        document.getElementById('cartTax').textContent = `₹${tax.toFixed(2)}`;
+        document.getElementById('cartTotal').textContent = `₹${(subtotal + tax).toFixed(2)}`;
+    }
+    
+    async function placeOrder() {
+        if (miniPOS.cart.length === 0) { showToast('Cart is empty!', 'error'); return; }
+        const orderData = { items: miniPOS.cart.map(item => ({ product_id: item.id, quantity: item.quantity, unit_price: item.price })), order_type: 'dine_in', payment_method: 'cash', notes: 'Order from Quick Order' };
+        try {
+            const response = await fetch('/app/pos/create-order/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify(orderData) });
+            const data = await response.json();
+            if (response.ok) {
+                showToast('Order placed successfully!', 'success');
+                miniPOS.cart = [];
+                updateCartCount();
+                updateCartUI();
+                switchTab('chat');
+                addChatMessage(`✅ Order #${data.order_number || 'NEW'} placed successfully! Total: ₹${data.total || orderData.items.reduce((s,i) => s + i.unit_price * i.quantity, 0).toFixed(2)}`, 'assistant');
+            } else { throw new Error(data.error || 'Failed to place order'); }
+        } catch (error) { showToast(error.message || 'Failed to place order', 'error'); console.error('Order error:', error); }
+    }
+    
+    async function sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        if (!message) return;
+        addChatMessage(message, 'user');
+        input.value = '';
+        showTypingIndicator();
+        try {
+            const response = await fetch('/api/v1/chatbot/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ message: message, session_id: miniPOS.sessionId }) });
+            const data = await response.json();
+            hideTypingIndicator();
+            miniPOS.sessionId = data.session_id;
+            addChatMessage(data.message, 'assistant');
+            if (data.recommendations && data.recommendations.length > 0) addRecommendations(data.recommendations);
+        } catch (error) { hideTypingIndicator(); addChatMessage("Sorry, I couldn't process that. Try browsing the Menu tab!", 'assistant'); }
+    }
+    
+    function askChatbot(message) { document.getElementById('chatInput').value = message; sendChatMessage(); }
+    
+    function addChatMessage(content, type) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        if (type === 'user') {
+            div.className = 'flex justify-end';
+            div.innerHTML = `<div class="bg-gradient-to-r from-orange-500 to-pink-500 rounded-2xl rounded-tr-none p-3 max-w-[80%]"><p class="text-sm text-white">${escapeHtml(content)}</p></div>`;
+        } else {
+            div.className = 'flex items-start gap-3';
+            div.innerHTML = `<div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-robot text-white text-sm"></i></div><div class="bg-gray-700 rounded-2xl rounded-tl-none p-3 max-w-[80%]"><div class="text-sm text-gray-200">${formatMessage(content)}</div></div>`;
+        }
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function addRecommendations(recommendations) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = 'ml-11 space-y-2';
+        div.innerHTML = recommendations.slice(0, 4).map(rec => `
+            <div class="bg-gray-700 rounded-xl p-2 flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs text-white font-medium truncate">${escapeHtml(rec.name)}</p>
+                    <p class="text-xs text-orange-400 font-bold">₹${rec.price.toFixed(0)}</p>
+                </div>
+                <button onclick="addToCartFromChat('${rec.product_id}', '${escapeHtml(rec.name).replace(/'/g, "\\'")}', ${rec.price})" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs transition-colors flex-shrink-0"><i class="fas fa-plus mr-1"></i> Add</button>
+            </div>
+        `).join('');
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function addToCartFromChat(id, name, price) {
+        const existing = miniPOS.cart.find(item => item.id === id);
+        if (existing) { existing.quantity++; } else {
+            const product = miniPOS.products.find(p => p.id === id);
+            miniPOS.cart.push({ id, name, price, image: product ? product.image : null, quantity: 1 });
+        }
+        updateCartCount();
+        showToast(`${name} added to cart!`, 'success');
+    }
+    
+    function showTypingIndicator() {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.id = 'typingIndicator';
+        div.className = 'flex items-start gap-3';
+        div.innerHTML = `<div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0"><i class="fas fa-robot text-white text-sm"></i></div><div class="bg-gray-700 rounded-2xl rounded-tl-none px-4 py-3"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    function hideTypingIndicator() { const indicator = document.getElementById('typingIndicator'); if (indicator) indicator.remove(); }
+    function escapeHtml(text) { if (!text) return ''; const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+    function formatMessage(message) { if (!message) return ''; return message.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>').replace(/• (.*?)(<br>|$)/g, '<li class="ml-4">$1</li>'); }
+    
+    document.addEventListener('DOMContentLoaded', function() { console.log('Mini POS Chatbot loaded'); updateCartCount(); });
+</script>

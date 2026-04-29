@@ -1,0 +1,133 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DDMU Cafe POS{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f97316',
+                        secondary: '#ec4899',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .gradient-bg { background: linear-gradient(135deg, #f97316, #ec4899); }
+        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    {% block body %}{% endblock %}
+    {% block content %}{% endblock %}
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl hidden z-50 animate-fadeIn">
+        <div class="flex items-center gap-3">
+            <i id="toastIcon" class="fas fa-check-circle"></i>
+            <span id="toastMessage"></span>
+        </div>
+    </div>
+    
+    <script>
+        // CSRF Token for Django
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+        
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+            
+            const types = {
+                success: { bg: 'bg-green-600', icon: 'fa-check-circle' },
+                error: { bg: 'bg-red-600', icon: 'fa-exclamation-circle' },
+                info: { bg: 'bg-blue-600', icon: 'fa-info-circle' },
+                warning: { bg: 'bg-yellow-600', icon: 'fa-exclamation-triangle' }
+            };
+            
+            toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-2xl z-50 animate-fadeIn ${types[type].bg}`;
+            icon.className = `fas ${types[type].icon}`;
+            msg.textContent = message;
+            
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+        
+        // AJAX Helper
+        async function apiRequest(url, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                }
+            };
+            if (data) options.body = JSON.stringify(data);
+            
+            try {
+                const response = await fetch(url, options);
+                const result = await response.json();
+                if (!response.ok) {
+                    const errorMsg = result.error || result.detail || result.message || 'Request failed';
+                    throw new Error(errorMsg);
+                }
+                return result;
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        }
+    </script>
+    
+    <!-- Django Messages -->
+    {% if messages %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% for message in messages %}
+            showToast('{{ message|escapejs }}', '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}success{% endif %}');
+            {% endfor %}
+        });
+    </script>
+    {% endif %}
+    
+    {% block extra_js %}{% endblock %}
+    
+    {# Virtual Assistant Chatbot Widget - Only available for authenticated users #}
+    {% if request.user.is_authenticated %}
+        {% include 'chatbot/widget.html' %}
+    {% endif %}
+</body>
+</html>

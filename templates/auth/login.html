@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - DDMU Cafe{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 p-4">
+    <div class="glass border border-white/20 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 gradient-bg rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg">
+                <i class="fas fa-mug-hot text-4xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-bold">DDMU Cafe</h1>
+            <p class="text-gray-300 mt-2">Cafe Point of Sale</p>
+        </div>
+        
+        <!-- Login Form -->
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            
+            {% if error %}
+            <div class="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-xl text-sm">
+                <i class="fas fa-exclamation-circle mr-2"></i>{{ error }}
+            </div>
+            {% endif %}
+            
+            {% if messages %}
+            {% for message in messages %}
+            <div class="bg-{{ message.tags }}-500/20 border border-{{ message.tags }}-500/50 text-{{ message.tags }}-300 px-4 py-3 rounded-xl text-sm">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                <div class="relative">
+                    <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="email" name="email" value="{{ email|default:'' }}" required
+                        class="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                        placeholder="Enter your email">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="password" name="password" required
+                        class="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                        placeholder="Enter your password">
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between text-sm">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="remember" class="rounded bg-white/10 border-white/20 text-primary focus:ring-primary">
+                    <span class="text-gray-300">Remember me</span>
+                </label>
+            </div>
+            
+            <button type="submit"
+                class="w-full gradient-bg text-white py-4 rounded-xl font-semibold hover:opacity-90 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+        </form>
+        
+        <!-- Demo Credentials -->
+        <!-- <div class="mt-6 pt-6 border-t border-white/10 text-center text-sm text-gray-400">
+            <p>Demo Credentials:</p>
+            <p class="mt-1"><strong>admin@odoo-cafe.com</strong> / <strong>admin123</strong></p>
+        </div> -->
+    </div>
+</div>
+{% endblock %}

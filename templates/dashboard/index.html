@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DDMU Cafe{% endblock %}
+
+{% block body %}
+<div class="flex h-screen">
+    {% include 'components/sidebar.html' %}
+    
+    <main class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title="Dashboard" %}
+        
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-100 text-sm">Today's Orders</p>
+                            <p class="text-3xl font-bold mt-1">{{ stats.total_orders|default:0 }}</p>
+                        </div>
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-shopping-cart text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100 text-sm">Revenue</p>
+                            <p class="text-3xl font-bold mt-1">₹{{ stats.total_revenue|default:0|floatformat:0 }}</p>
+                        </div>
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-rupee-sign text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-100 text-sm">Active Tables</p>
+                            <p class="text-3xl font-bold mt-1">{{ stats.active_tables|default:0 }}</p>
+                        </div>
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-chair text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-orange-100 text-sm">Avg Order Value</p>
+                            <p class="text-3xl font-bold mt-1">₹{{ stats.avg_order|default:0|floatformat:0 }}</p>
+                        </div>
+                        <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-chart-line text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <a href="{% url 'pos_terminal' %}" class="bg-gray-800 hover:bg-gray-700 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition group">
+                    <div class="w-16 h-16 gradient-bg rounded-2xl flex items-center justify-center group-hover:scale-110 transition">
+                        <i class="fas fa-cash-register text-2xl"></i>
+                    </div>
+                    <span class="font-medium">Open POS</span>
+                </a>
+                
+                <a href="{% url 'order_list' %}" class="bg-gray-800 hover:bg-gray-700 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition group">
+                    <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition">
+                        <i class="fas fa-receipt text-2xl"></i>
+                    </div>
+                    <span class="font-medium">View Orders</span>
+                </a>
+                
+                <a href="{% url 'kitchen_display' %}" class="bg-gray-800 hover:bg-gray-700 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition group">
+                    <div class="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition">
+                        <i class="fas fa-utensils text-2xl"></i>
+                    </div>
+                    <span class="font-medium">Kitchen</span>
+                </a>
+                
+                <a href="{% url 'table_list' %}" class="bg-gray-800 hover:bg-gray-700 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition group">
+                    <div class="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition">
+                        <i class="fas fa-th text-2xl"></i>
+                    </div>
+                    <span class="font-medium">Tables</span>
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Recent Orders -->
+                <div class="bg-gray-800 rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">
+                            <i class="fas fa-clock text-blue-400 mr-2"></i>Recent Orders
+                        </h3>
+                        <a href="{% url 'order_list' %}" class="text-primary text-sm hover:underline">View All</a>
+                    </div>
+                    <div class="space-y-3">
+                        {% for order in recent_orders %}
+                        <div class="flex items-center justify-between p-4 bg-gray-700/50 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-receipt text-gray-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium">#{{ order.order_number }}</p>
+                                    <p class="text-sm text-gray-400">{{ order.order_type }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-green-400">₹{{ order.total_amount|floatformat:2 }}</p>
+                                <span class="text-xs px-2 py-1 rounded-full 
+                                    {% if order.status == 'paid' %}bg-green-500/20 text-green-400
+                                    {% elif order.status == 'preparing' %}bg-orange-500/20 text-orange-400
+                                    {% elif order.status == 'confirmed' %}bg-blue-500/20 text-blue-400
+                                    {% else %}bg-gray-500/20 text-gray-400{% endif %}">
+                                    {{ order.status|title }}
+                                </span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-gray-500 py-8">No recent orders</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Top Products -->
+                <div class="bg-gray-800 rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">
+                            <i class="fas fa-star text-yellow-400 mr-2"></i>Top Products
+                        </h3>
+                        <a href="{% url 'product_list' %}" class="text-primary text-sm hover:underline">View All</a>
+                    </div>
+                    <div class="space-y-3">
+                        {% for product in top_products %}
+                        <div class="flex items-center justify-between p-4 bg-gray-700/50 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center font-bold">
+                                    {{ forloop.counter }}
+                                </div>
+                                <div>
+                                    <p class="font-medium">{{ product.name }}</p>
+                                    <p class="text-sm text-gray-400">{{ product.category.name }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold">₹{{ product.price|floatformat:2 }}</p>
+                                <p class="text-xs text-gray-400">{{ product.sold_count }} sold</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-gray-500 py-8">No products yet</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

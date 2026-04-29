@@ -1,0 +1,421 @@
+{% extends 'base.html' %}
+
+{% block title %}Order Assistant - DDMU Cafe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .message-bubble {
+        max-width: 80%;
+        animation: fadeSlide 0.3s ease;
+    }
+    
+    @keyframes fadeSlide {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .recommendation-card {
+        background: linear-gradient(135deg, #374151, #1f2937);
+        border: 1px solid #4b5563;
+        transition: all 0.3s ease;
+    }
+    
+    .recommendation-card:hover {
+        border-color: #f97316;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(249, 115, 22, 0.2);
+    }
+    
+    .quick-action-btn {
+        background: #374151;
+        transition: all 0.3s ease;
+    }
+    
+    .quick-action-btn:hover {
+        background: linear-gradient(135deg, #f97316, #ec4899);
+        transform: scale(1.05);
+    }
+    
+    .typing-dots span {
+        animation: bounce 1s infinite;
+    }
+    
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes bounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-8px); }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <!-- Header -->
+    <header class="bg-gray-800/50 backdrop-blur-xl border-b border-gray-700 sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">DDMU Cafe Assistant</h1>
+                    <p class="text-sm text-gray-400">Your personal ordering guide</p>
+                </div>
+            </div>
+            <a href="{% url 'pos_terminal' %}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-white transition-colors flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> Back to POS
+            </a>
+        </div>
+    </header>
+    
+    <!-- Chat Container -->
+    <div class="chat-container px-4 py-6">
+        <!-- Messages Area -->
+        <div id="chatMessages" class="space-y-4 pb-32">
+            <!-- Welcome Message -->
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-robot text-white"></i>
+                </div>
+                <div class="message-bubble bg-gray-700 rounded-2xl rounded-tl-none p-4">
+                    <p class="text-gray-200 mb-4">👋 <strong>Welcome to DDMU Cafe!</strong></p>
+                    <p class="text-gray-300 text-sm mb-4">I'm your virtual assistant, ready to help you discover the perfect meal. Whether you're ordering for yourself or a team, I'll guide you through our menu!</p>
+                    <p class="text-gray-400 text-sm">What would you like to do today?</p>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="flex flex-wrap gap-3 ml-13 pl-1">
+                <button onclick="sendQuickAction('group_order')" class="quick-action-btn px-5 py-3 rounded-xl text-white flex items-center gap-2 shadow-lg">
+                    <i class="fas fa-users text-orange-400"></i>
+                    <span>Order for Team</span>
+                </button>
+                <button onclick="sendQuickAction('combos')" class="quick-action-btn px-5 py-3 rounded-xl text-white flex items-center gap-2 shadow-lg">
+                    <i class="fas fa-gift text-pink-400"></i>
+                    <span>Combo Deals</span>
+                </button>
+                <button onclick="sendQuickAction('popular')" class="quick-action-btn px-5 py-3 rounded-xl text-white flex items-center gap-2 shadow-lg">
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <span>Popular Items</span>
+                </button>
+                <button onclick="sendQuickAction('vegetarian')" class="quick-action-btn px-5 py-3 rounded-xl text-white flex items-center gap-2 shadow-lg">
+                    <i class="fas fa-leaf text-green-400"></i>
+                    <span>Vegetarian</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Group Size Modal -->
+    <div id="groupSizeModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-2xl p-6 max-w-md w-full animate-fadeIn">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-users text-white text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">How many people?</h3>
+                <p class="text-gray-400 text-sm mt-2">Select your group size for personalized recommendations</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="selectGroupSize(2)" class="px-4 py-4 bg-gray-700 hover:bg-orange-500 rounded-xl text-white transition-all hover:scale-105 flex flex-col items-center">
+                    <span class="text-2xl mb-1">👫</span>
+                    <span class="font-medium">2-3 People</span>
+                </button>
+                <button onclick="selectGroupSize(5)" class="px-4 py-4 bg-gray-700 hover:bg-orange-500 rounded-xl text-white transition-all hover:scale-105 flex flex-col items-center">
+                    <span class="text-2xl mb-1">👨‍👩‍👧‍👦</span>
+                    <span class="font-medium">4-6 People</span>
+                </button>
+                <button onclick="selectGroupSize(8)" class="px-4 py-4 bg-gray-700 hover:bg-orange-500 rounded-xl text-white transition-all hover:scale-105 flex flex-col items-center">
+                    <span class="text-2xl mb-1">👥</span>
+                    <span class="font-medium">7-10 People</span>
+                </button>
+                <button onclick="selectGroupSize(15)" class="px-4 py-4 bg-gray-700 hover:bg-orange-500 rounded-xl text-white transition-all hover:scale-105 flex flex-col items-center">
+                    <span class="text-2xl mb-1">🎉</span>
+                    <span class="font-medium">10+ People</span>
+                </button>
+            </div>
+            <button onclick="closeGroupSizeModal()" class="w-full mt-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-gray-300 transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+    
+    <!-- Fixed Input Area -->
+    <div class="fixed bottom-0 left-0 right-0 bg-gray-800/95 backdrop-blur-xl border-t border-gray-700 p-4 z-40">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex gap-3">
+                <input type="text" 
+                       id="messageInput" 
+                       class="flex-1 bg-gray-700 text-white rounded-xl px-5 py-4 text-base focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder-gray-400"
+                       placeholder="Ask me about our menu, combos, or recommendations..."
+                       onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()" 
+                        class="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-4 rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2">
+                    <span class="hidden sm:inline">Send</span>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // State
+    const state = {
+        sessionId: null,
+        groupSize: null,
+        pendingAction: null
+    };
+    
+    const API_URL = '/api/v1/chatbot/';
+    
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+    
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        if (!message) return;
+        
+        addUserMessage(message);
+        input.value = '';
+        
+        showTyping();
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    message,
+                    session_id: state.sessionId,
+                    group_size: state.groupSize
+                })
+            });
+            
+            const data = await response.json();
+            hideTyping();
+            state.sessionId = data.session_id;
+            addAssistantMessage(data);
+        } catch (error) {
+            hideTyping();
+            addErrorMessage();
+        }
+    }
+    
+    async function sendQuickAction(action) {
+        if (action === 'group_order' && !state.groupSize) {
+            state.pendingAction = action;
+            document.getElementById('groupSizeModal').classList.remove('hidden');
+            return;
+        }
+        
+        showTyping();
+        
+        try {
+            const response = await fetch(API_URL + 'quick-action/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    action,
+                    session_id: state.sessionId,
+                    group_size: state.groupSize
+                })
+            });
+            
+            const data = await response.json();
+            hideTyping();
+            state.sessionId = data.session_id;
+            addAssistantMessage(data);
+        } catch (error) {
+            hideTyping();
+            addErrorMessage();
+        }
+    }
+    
+    function selectGroupSize(size) {
+        state.groupSize = size;
+        closeGroupSizeModal();
+        addUserMessage(`We have ${size} people`);
+        
+        if (state.pendingAction) {
+            sendQuickAction(state.pendingAction);
+            state.pendingAction = null;
+        }
+    }
+    
+    function closeGroupSizeModal() {
+        document.getElementById('groupSizeModal').classList.add('hidden');
+    }
+    
+    function addUserMessage(text) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = 'flex justify-end';
+        div.innerHTML = `
+            <div class="message-bubble bg-gradient-to-r from-orange-500 to-pink-500 rounded-2xl rounded-tr-none p-4 text-white">
+                ${escapeHtml(text)}
+            </div>
+        `;
+        container.appendChild(div);
+        scrollToBottom();
+    }
+    
+    function addAssistantMessage(data) {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.className = 'flex items-start gap-3';
+        
+        let html = `
+            <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-robot text-white"></i>
+            </div>
+            <div class="flex-1 max-w-[85%]">
+                <div class="message-bubble bg-gray-700 rounded-2xl rounded-tl-none p-4">
+                    <div class="text-gray-200 prose prose-invert">${formatMessage(data.message)}</div>
+                </div>
+        `;
+        
+        if (data.recommendations?.length) {
+            html += `<div class="mt-4 grid gap-3">`;
+            for (const rec of data.recommendations) {
+                html += `
+                    <div class="recommendation-card rounded-xl p-4 cursor-pointer" onclick="addToCart('${rec.product_id}', '${escapeHtml(rec.name)}', ${rec.price}, ${rec.quantity})">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-white">${escapeHtml(rec.name)}</h4>
+                                <p class="text-sm text-gray-400">${escapeHtml(rec.category || '')}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-orange-400 font-bold text-lg">₹${rec.price.toFixed(2)}</span>
+                                ${rec.quantity > 1 ? `<span class="block text-xs text-gray-400">x${rec.quantity}</span>` : ''}
+                            </div>
+                        </div>
+                        ${rec.reason ? `<p class="text-sm text-gray-400 mb-3"><i class="fas fa-lightbulb text-yellow-400 mr-2"></i>${escapeHtml(rec.reason)}</p>` : ''}
+                        <div class="flex gap-2 flex-wrap">
+                            ${rec.is_combo ? '<span class="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded-full"><i class="fas fa-box mr-1"></i>Combo</span>' : ''}
+                            ${rec.has_variants ? '<span class="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full"><i class="fas fa-palette mr-1"></i>Variants</span>' : ''}
+                        </div>
+                        <button class="w-full mt-3 py-2 bg-gradient-to-r from-orange-500 to-pink-500 rounded-lg text-white font-medium hover:opacity-90">
+                            <i class="fas fa-plus mr-2"></i>Add to Order
+                        </button>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            
+            if (data.total_estimated_price > 0) {
+                html += `
+                    <div class="mt-4 p-4 bg-gray-700/50 rounded-xl flex justify-between items-center">
+                        <span class="text-gray-300">Estimated Total:</span>
+                        <span class="text-2xl font-bold text-orange-400">₹${data.total_estimated_price.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        if (data.follow_up_questions?.length) {
+            html += `<div class="mt-4 flex flex-wrap gap-2">`;
+            for (const q of data.follow_up_questions) {
+                html += `<button onclick="askFollowUp('${escapeHtml(q)}')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-gray-300">${escapeHtml(q)}</button>`;
+            }
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+        div.innerHTML = html;
+        container.appendChild(div);
+        scrollToBottom();
+    }
+    
+    function addErrorMessage() {
+        addAssistantMessage({ message: "Sorry, I'm having trouble connecting. Please try again in a moment." });
+    }
+    
+    function askFollowUp(question) {
+        document.getElementById('messageInput').value = question;
+        sendMessage();
+    }
+    
+    function addToCart(productId, name, price, quantity) {
+        showToast(`Added ${quantity}x ${name} to order!`, 'success');
+        // Integration with cart system can be added here
+    }
+    
+    function showTyping() {
+        const container = document.getElementById('chatMessages');
+        const div = document.createElement('div');
+        div.id = 'typingIndicator';
+        div.className = 'flex items-start gap-3';
+        div.innerHTML = `
+            <div class="w-10 h-10 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-robot text-white"></i>
+            </div>
+            <div class="bg-gray-700 rounded-2xl rounded-tl-none px-4 py-3">
+                <div class="typing-dots flex gap-1">
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+        scrollToBottom();
+    }
+    
+    function hideTyping() {
+        document.getElementById('typingIndicator')?.remove();
+    }
+    
+    function formatMessage(msg) {
+        if (!msg) return '';
+        return msg
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>')
+            .replace(/• (.*?)(<br>|$)/g, '<li class="ml-4">$1</li>');
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function scrollToBottom() {
+        const container = document.getElementById('chatMessages');
+        container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+    
+    function getCookie(name) {
+        let value = null;
+        if (document.cookie) {
+            for (const c of document.cookie.split(';')) {
+                const [k, v] = c.trim().split('=');
+                if (k === name) { value = decodeURIComponent(v); break; }
+            }
+        }
+        return value;
+    }
+</script>
+{% endblock %}

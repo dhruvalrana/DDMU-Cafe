@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Payment - Order #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="flex h-screen bg-gray-100">
+    {% include 'components/sidebar.html' with active='orders' %}
+    
+    <div class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title='Process Payment' back_url='order_detail' back_id=order.id %}
+        
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-2xl mx-auto">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <!-- Order Summary -->
+                    <div class="p-6 bg-gray-50 border-b">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-900">Order #{{ order.order_number }}</h2>
+                            <span class="px-3 py-1 text-sm rounded-full bg-orange-100 text-orange-700">
+                                {{ order.get_order_type_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="space-y-2 text-sm">
+                            {% for line in order.lines.all %}
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">{{ line.quantity }}x {{ line.product.name }}</span>
+                                <span class="font-medium">${{ line.line_total }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="border-t mt-4 pt-4 space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Subtotal</span>
+                                <span>${{ order.subtotal }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Tax</span>
+                                <span>${{ order.tax_amount }}</span>
+                            </div>
+                            {% if order.discount_amount > 0 %}
+                            <div class="flex justify-between text-sm text-green-600">
+                                <span>Discount</span>
+                                <span>-${{ order.discount_amount }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="flex justify-between text-lg font-bold pt-2 border-t">
+                                <span>Total</span>
+                                <span class="text-orange-600">${{ order.total_amount }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Form -->
+                    <form method="post" class="p-6 space-y-6">
+                        {% csrf_token %}
+                        
+                        <!-- Payment Method -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                Payment Method
+                            </label>
+                            <div class="grid grid-cols-2 gap-3">
+                                {% for method in payment_methods %}
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" 
+                                           name="payment_method" 
+                                           value="{{ method.code }}"
+                                           {% if forloop.first %}checked{% endif %}
+                                           class="peer sr-only">
+                                    <div class="flex items-center gap-3 p-4 border rounded-lg 
+                                                peer-checked:border-orange-500 peer-checked:bg-orange-50
+                                                hover:bg-gray-50 transition">
+                                        <i class="fas {% if method.code == 'cash' %}fa-money-bill
+                                                     {% elif method.code == 'card' %}fa-credit-card
+                                                     {% else %}fa-wallet{% endif %} text-xl text-gray-600"></i>
+                                        <span class="font-medium">{{ method.name }}</span>
+                                    </div>
+                                </label>
+                                {% empty %}
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" name="payment_method" value="cash" checked class="peer sr-only">
+                                    <div class="flex items-center gap-3 p-4 border rounded-lg 
+                                                peer-checked:border-orange-500 peer-checked:bg-orange-50">
+                                        <i class="fas fa-money-bill text-xl text-gray-600"></i>
+                                        <span class="font-medium">Cash</span>
+                                    </div>
+                                </label>
+                                <label class="relative cursor-pointer">
+                                    <input type="radio" name="payment_method" value="card" class="peer sr-only">
+                                    <div class="flex items-center gap-3 p-4 border rounded-lg 
+                                                peer-checked:border-orange-500 peer-checked:bg-orange-50">
+                                        <i class="fas fa-credit-card text-xl text-gray-600"></i>
+                                        <span class="font-medium">Card</span>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Amount Received (for cash) -->
+                        <div id="cashSection">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Amount Received
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                <input type="number" 
+                                       name="amount_received" 
+                                       id="amountReceived"
+                                       step="0.01"
+                                       min="{{ order.total_amount }}"
+                                       value="{{ order.total_amount }}"
+                                       class="w-full pl-8 pr-4 py-3 text-xl border border-gray-300 rounded-lg 
+                                              focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                            </div>
+                            
+                            <!-- Quick amounts -->
+                            <div class="flex gap-2 mt-3">
+                                <button type="button" onclick="setAmount({{ order.total_amount }})" 
+                                        class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm">
+                                    Exact ${{ order.total_amount }}
+                                </button>
+                                <button type="button" onclick="setAmount({{ order.total_amount|add:5 }})" 
+                                        class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm">
+                                    +$5
+                                </button>
+                                <button type="button" onclick="setAmount({{ order.total_amount|add:10 }})" 
+                                        class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm">
+                                    +$10
+                                </button>
+                                <button type="button" onclick="setAmount({{ order.total_amount|add:20 }})" 
+                                        class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm">
+                                    +$20
+                                </button>
+                            </div>
+                            
+                            <!-- Change -->
+                            <div class="mt-4 p-4 bg-green-50 rounded-lg" id="changeSection">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-green-700">Change Due</span>
+                                    <span class="text-2xl font-bold text-green-600" id="changeAmount">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="flex gap-3 pt-4">
+                            <a href="{% url 'order_detail' order.id %}" 
+                               class="flex-1 py-3 text-center text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                Cancel
+                            </a>
+                            <button type="submit" 
+                                    class="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
+                                <i class="fas fa-check mr-2"></i>
+                                Complete Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+const orderTotal = {{ order.total_amount }};
+const amountInput = document.getElementById('amountReceived');
+const changeAmount = document.getElementById('changeAmount');
+
+function setAmount(amount) {
+    amountInput.value = amount.toFixed(2);
+    calculateChange();
+}
+
+function calculateChange() {
+    const received = parseFloat(amountInput.value) || 0;
+    const change = Math.max(0, received - orderTotal);
+    changeAmount.textContent = '$' + change.toFixed(2);
+}
+
+amountInput.addEventListener('input', calculateChange);
+calculateChange();
+
+// Show/hide cash section based on payment method
+document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const cashSection = document.getElementById('cashSection');
+        cashSection.style.display = radio.value === 'cash' ? 'block' : 'none';
+    });
+});
+</script>
+{% endblock %}

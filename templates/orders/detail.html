@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+
+{% block title %}Order #{{ order.order_number }} - DDMU Cafe{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Print styles - hide everything except bill content */
+    @media print {
+        /* Hide non-essential elements */
+        .no-print,
+        .sidebar,
+        nav,
+        header,
+        .header-component,
+        button,
+        a,
+        form {
+            display: none !important;
+        }
+        
+        /* Show only the printable bill */
+        body {
+            background: white !important;
+            color: black !important;
+            font-size: 12pt !important;
+        }
+        
+        .print-only {
+            display: block !important;
+        }
+        
+        .print-bill {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            color: black;
+        }
+        
+        .print-bill * {
+            color: black !important;
+            background: white !important;
+        }
+        
+        .print-bill .bill-header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .print-bill .bill-items {
+            margin-bottom: 15px;
+        }
+        
+        .print-bill .bill-items table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .print-bill .bill-items th,
+        .print-bill .bill-items td {
+            padding: 5px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .print-bill .bill-items th:last-child,
+        .print-bill .bill-items td:last-child {
+            text-align: right;
+        }
+        
+        .print-bill .bill-totals {
+            border-top: 2px dashed #000;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .print-bill .bill-totals .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+        
+        .print-bill .bill-totals .grand-total {
+            font-weight: bold;
+            font-size: 14pt;
+            border-top: 1px solid #000;
+            margin-top: 5px;
+            padding-top: 5px;
+        }
+        
+        .print-bill .payment-details {
+            border-top: 2px dashed #000;
+            padding-top: 10px;
+            margin-top: 15px;
+        }
+        
+        .print-bill .bill-footer {
+            text-align: center;
+            border-top: 2px dashed #000;
+            padding-top: 10px;
+            margin-top: 15px;
+            font-size: 10pt;
+        }
+        
+        /* Hide the main content when printing */
+        .main-content,
+        .flex.h-screen > *:not(.print-bill) {
+            display: none !important;
+        }
+    }
+    
+    /* Hide print-only content on screen */
+    .print-only,
+    .print-bill {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<!-- Printable Bill - Only visible when printing -->
+<div class="print-bill print-only">
+    <div class="bill-header">
+        <h1 style="font-size: 18pt; font-weight: bold; margin: 0;">DDMU Cafe</h1>
+        <p style="margin: 5px 0;">Order #{{ order.order_number }}</p>
+        <p style="margin: 5px 0; font-size: 10pt;">{{ order.created_at|date:"M d, Y H:i" }}</p>
+        {% if order.table %}
+        <p style="margin: 5px 0;">Table: {{ order.table.name }}</p>
+        {% endif %}
+        <p style="margin: 5px 0;">Type: {{ order.get_order_type_display }}</p>
+    </div>
+    
+    <div class="bill-items">
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Price</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in order.lines.all %}
+                <tr>
+                    <td>{{ line.product.name }}</td>
+                    <td style="text-align: center;">{{ line.quantity }}</td>
+                    <td style="text-align: right;">₹{{ line.unit_price|floatformat:2 }}</td>
+                    <td style="text-align: right;">₹{{ line.line_total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="bill-totals">
+        <div class="total-row">
+            <span>Subtotal:</span>
+            <span>₹{{ order.subtotal|floatformat:2 }}</span>
+        </div>
+        <div class="total-row">
+            <span>Tax:</span>
+            <span>₹{{ order.tax_amount|floatformat:2 }}</span>
+        </div>
+        {% if order.discount_amount %}
+        <div class="total-row">
+            <span>Discount:</span>
+            <span>-₹{{ order.discount_amount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="total-row grand-total">
+            <span>TOTAL:</span>
+            <span>₹{{ order.total_amount|floatformat:2 }}</span>
+        </div>
+    </div>
+    
+    <!-- Payment Details -->
+    {% if order.payments.exists %}
+    <div class="payment-details">
+        <h3 style="font-weight: bold; margin-bottom: 10px;">Payment Details</h3>
+        {% for payment in order.payments.all %}
+        <div class="total-row">
+            <span>{{ payment.payment_method.name }}:</span>
+            <span>₹{{ payment.amount|floatformat:2 }}</span>
+        </div>
+        {% if payment.amount_received and payment.amount_received > payment.amount %}
+        <div class="total-row">
+            <span>Amount Received:</span>
+            <span>₹{{ payment.amount_received|floatformat:2 }}</span>
+        </div>
+        <div class="total-row">
+            <span>Change:</span>
+            <span>₹{{ payment.change_amount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if payment.transaction_id %}
+        <div class="total-row" style="font-size: 9pt;">
+            <span>Transaction ID:</span>
+            <span>{{ payment.transaction_id }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="bill-footer">
+        <p>Thank you for dining with us!</p>
+        <p style="font-size: 9pt;">{{ order.paid_at|date:"M d, Y H:i"|default:order.created_at|date:"M d, Y H:i" }}</p>
+    </div>
+</div>
+
+<div class="flex h-screen main-content">
+    {% include 'components/sidebar.html' %}
+    
+    <main class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title="Order Details" %}
+        
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-4xl mx-auto">
+                <!-- Order Header -->
+                <div class="bg-gray-800 rounded-2xl p-6 mb-6">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <h1 class="text-3xl font-bold mb-2">#{{ order.order_number }}</h1>
+                            <div class="flex flex-wrap gap-3">
+                                <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
+                                    <i class="fas fa-utensils mr-1"></i>{{ order.order_type|title }}
+                                </span>
+                                {% if order.table %}
+                                <span class="px-3 py-1 bg-gray-700 rounded-full text-sm">
+                                    <i class="fas fa-chair mr-1"></i>{{ order.table.name }}
+                                </span>
+                                {% endif %}
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold
+                                    {% if order.status == 'paid' %}bg-green-500/20 text-green-400
+                                    {% elif order.status == 'preparing' %}bg-orange-500/20 text-orange-400
+                                    {% elif order.status == 'ready' %}bg-blue-500/20 text-blue-400
+                                    {% elif order.status == 'sent_to_kitchen' %}bg-purple-500/20 text-purple-400
+                                    {% else %}bg-gray-500/20 text-gray-400{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-400">Created</p>
+                            <p class="font-medium">{{ order.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Order Items -->
+                    <div class="lg:col-span-2 bg-gray-800 rounded-2xl p-6">
+                        <h2 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-list mr-2 text-primary"></i>Order Items
+                        </h2>
+                        <div class="space-y-3">
+                            {% for line in order.lines.all %}
+                            <div class="flex items-center justify-between p-4 bg-gray-700/50 rounded-xl">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-utensils text-gray-400"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">{{ line.product.name }}</p>
+                                        <p class="text-sm text-gray-400">₹{{ line.unit_price|floatformat:2 }} each</p>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <span class="text-lg font-bold">x{{ line.quantity }}</span>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-bold text-green-400">₹{{ line.line_total|floatformat:2 }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Totals -->
+                        <div class="mt-6 pt-6 border-t border-gray-700 space-y-2">
+                            <div class="flex justify-between text-gray-400">
+                                <span>Subtotal</span>
+                                <span>₹{{ order.subtotal|floatformat:2 }}</span>
+                            </div>
+                            <div class="flex justify-between text-gray-400">
+                                <span>Tax</span>
+                                <span>₹{{ order.tax_amount|floatformat:2 }}</span>
+                            </div>
+                            {% if order.discount_amount %}
+                            <div class="flex justify-between text-green-400">
+                                <span>Discount</span>
+                                <span>-₹{{ order.discount_amount|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="flex justify-between text-2xl font-bold pt-3 border-t border-gray-600">
+                                <span>Total</span>
+                                <span class="text-green-400">₹{{ order.total_amount|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions & Info -->
+                    <div class="space-y-6">
+                        <!-- Customer -->
+                        {% if order.customer %}
+                        <div class="bg-gray-800 rounded-2xl p-6">
+                            <h2 class="text-lg font-semibold mb-4">
+                                <i class="fas fa-user mr-2 text-blue-400"></i>Customer
+                            </h2>
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-gray-700 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-2xl text-gray-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium">{{ order.customer.name }}</p>
+                                    <p class="text-sm text-gray-400">{{ order.customer.phone }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Status Actions -->
+                        <div class="bg-gray-800 rounded-2xl p-6">
+                            <h2 class="text-lg font-semibold mb-4">
+                                <i class="fas fa-tasks mr-2 text-yellow-400"></i>Actions
+                            </h2>
+                            <div class="space-y-3">
+                                {% if order.status == 'draft' %}
+                                <form method="post" action="{% url 'order_update_status' order.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="sent_to_kitchen">
+                                    <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-medium transition">
+                                        <i class="fas fa-paper-plane mr-2"></i>Send to Kitchen
+                                    </button>
+                                </form>
+                                {% elif order.status == 'sent_to_kitchen' %}
+                                <form method="post" action="{% url 'order_update_status' order.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="preparing">
+                                    <button type="submit" class="w-full py-3 bg-orange-600 hover:bg-orange-700 rounded-xl font-medium transition">
+                                        <i class="fas fa-fire mr-2"></i>Start Preparing
+                                    </button>
+                                </form>
+                                {% elif order.status == 'preparing' %}
+                                <form method="post" action="{% url 'order_update_status' order.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="ready">
+                                    <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 rounded-xl font-medium transition">
+                                        <i class="fas fa-bell mr-2"></i>Mark Ready
+                                    </button>
+                                </form>
+                                {% elif order.status == 'ready' %}
+                                <form method="post" action="{% url 'order_update_status' order.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="served">
+                                    <button type="submit" class="w-full py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-medium transition">
+                                        <i class="fas fa-utensils mr-2"></i>Mark Served
+                                    </button>
+                                </form>
+                                {% endif %}
+                                
+                                {% if order.status not in 'paid,cancelled' and not order.paid_at %}
+                                <a href="{% url 'order_payment' order.id %}" class="block w-full py-3 gradient-bg hover:opacity-90 rounded-xl font-medium text-center transition">
+                                    <i class="fas fa-credit-card mr-2"></i>Process Payment
+                                </a>
+                                {% endif %}
+                                
+                                {% if order.status not in 'paid,cancelled,served' %}
+                                <form method="post" action="{% url 'order_update_status' order.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="status" value="cancelled">
+                                    <button type="submit" onclick="return confirm('Cancel this order?')" 
+                                        class="w-full py-3 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-xl font-medium transition">
+                                        <i class="fas fa-times mr-2"></i>Cancel Order
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Print -->
+                        <div class="bg-gray-800 rounded-2xl p-6">
+                            <h2 class="text-lg font-semibold mb-4">
+                                <i class="fas fa-print mr-2 text-gray-400"></i>Print
+                            </h2>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="window.print()" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition">
+                                    <i class="fas fa-receipt mr-2"></i>Receipt
+                                </button>
+                                <button onclick="printKOT()" class="py-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition">
+                                    <i class="fas fa-file-alt mr-2"></i>KOT
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Back Button -->
+                <div class="mt-6">
+                    <a href="{% url 'order_list' %}" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition">
+                        <i class="fas fa-arrow-left"></i>Back to Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

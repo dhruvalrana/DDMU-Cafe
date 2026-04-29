@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Orders - DDMU Cafe{% endblock %}
+
+{% block body %}
+<div class="flex h-screen">
+    {% include 'components/sidebar.html' %}
+    
+    <main class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title="Orders" action_url=pos_url action_text="New Order" action_icon="plus" %}
+        
+        <div class="flex-1 overflow-hidden flex flex-col p-6">
+            <!-- Filters -->
+            <div class="flex flex-wrap gap-2 mb-4 shrink-0">
+                <a href="?status=" class="px-4 py-2 rounded-lg text-sm font-medium transition
+                    {% if not current_status %}bg-primary{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                    All Orders
+                </a>
+                <a href="?status=draft" class="px-4 py-2 rounded-lg text-sm font-medium transition
+                    {% if current_status == 'draft' %}bg-primary{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                    Draft
+                </a>
+                <a href="?status=sent_to_kitchen" class="px-4 py-2 rounded-lg text-sm font-medium transition
+                    {% if current_status == 'sent_to_kitchen' %}bg-primary{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                    Sent to Kitchen
+                </a>
+                <a href="?status=preparing" class="px-4 py-2 rounded-lg text-sm font-medium transition
+                    {% if current_status == 'preparing' %}bg-primary{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                    Preparing
+                </a>
+                <a href="?status=ready" class="px-4 py-2 rounded-lg text-sm font-medium transition
+                    {% if current_status == 'ready' %}bg-primary{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                    Ready
+                </a>
+                <a href="?status=paid" class="px-4 py-2 rounded-lg text-sm font-medium transition
+                    {% if current_status == 'paid' %}bg-primary{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                    Paid
+                </a>
+            </div>
+            
+            <!-- Orders Grid -->
+            <div class="flex-1 overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {% for order in orders %}
+                    <div class="bg-gray-800 rounded-2xl overflow-hidden border-2 border-gray-700 hover:border-primary transition cursor-pointer"
+                         onclick="window.location='{% url 'order_detail' order.id %}'">
+                        <!-- Header -->
+                        <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                            <div>
+                                <span class="text-lg font-bold">#{{ order.order_number }}</span>
+                                <span class="ml-2 text-sm text-gray-400">{{ order.order_type|title }}</span>
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold uppercase
+                                {% if order.status == 'paid' %}bg-green-500/20 text-green-400
+                                {% elif order.status == 'preparing' %}bg-orange-500/20 text-orange-400
+                                {% elif order.status == 'ready' %}bg-blue-500/20 text-blue-400
+                                {% elif order.status == 'sent_to_kitchen' %}bg-purple-500/20 text-purple-400
+                                {% elif order.status == 'cancelled' %}bg-red-500/20 text-red-400
+                                {% else %}bg-gray-500/20 text-gray-400{% endif %}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </div>
+                        
+                        <!-- Items -->
+                        <div class="p-4">
+                            {% for line in order.lines.all|slice:":3" %}
+                            <div class="flex justify-between text-sm py-1">
+                                <span class="text-gray-300">{{ line.product.name }}</span>
+                                <span class="text-gray-500">x{{ line.quantity }}</span>
+                            </div>
+                            {% endfor %}
+                            {% if order.lines.count > 3 %}
+                            <p class="text-sm text-gray-500 mt-1">+{{ order.lines.count|add:"-3" }} more items</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="flex items-center justify-between p-4 border-t border-gray-700 bg-gray-700/30">
+                            <div class="text-sm text-gray-400">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ order.created_at|timesince }} ago
+                            </div>
+                            <div class="text-xl font-bold text-green-400">
+                                ₹{{ order.total_amount|floatformat:2 }}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-span-full text-center py-16 text-gray-500">
+                        <i class="fas fa-receipt text-6xl mb-4"></i>
+                        <p class="text-xl">No orders found</p>
+                        <p class="mt-2">Create a new order from the POS terminal</p>
+                        <a href="{% url 'pos_terminal' %}" class="inline-block mt-4 px-6 py-3 gradient-bg rounded-xl font-medium">
+                            <i class="fas fa-plus mr-2"></i>New Order
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            {% if orders.has_other_pages %}
+            <div class="flex justify-center gap-2 mt-6 shrink-0">
+                {% if orders.has_previous %}
+                <a href="?page={{ orders.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}" 
+                   class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                {% endif %}
+                
+                <span class="px-4 py-2 bg-gray-800 rounded-lg">
+                    Page {{ orders.number }} of {{ orders.paginator.num_pages }}
+                </span>
+                
+                {% if orders.has_next %}
+                <a href="?page={{ orders.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}" 
+                   class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}

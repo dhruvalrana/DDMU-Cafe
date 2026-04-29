@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block title %}Kitchen Display - DDMU Cafe{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes pulse-border {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    }
+    .pulse-new { animation: pulse-border 2s infinite; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-900">
+    <!-- Kitchen Header -->
+    <header class="bg-orange-600 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'dashboard' %}" class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1 class="text-2xl font-bold">
+                <i class="fas fa-fire mr-3"></i>Kitchen Display System
+            </h1>
+        </div>
+        <div class="flex items-center gap-8">
+            <div class="text-center">
+                <span id="pendingCount" class="text-4xl font-bold">{{ pending_count }}</span>
+                <p class="text-xs opacity-80">Pending</p>
+            </div>
+            <div class="text-center">
+                <span id="preparingCount" class="text-4xl font-bold">{{ preparing_count }}</span>
+                <p class="text-xs opacity-80">Preparing</p>
+            </div>
+            <div class="text-center">
+                <span id="readyCount" class="text-4xl font-bold">{{ ready_count }}</span>
+                <p class="text-xs opacity-80">Ready</p>
+            </div>
+            <button onclick="location.reload()" class="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition">
+                <i class="fas fa-sync mr-2"></i>Refresh
+            </button>
+        </div>
+    </header>
+    
+    <!-- Kitchen Orders Grid - Three Columns Layout -->
+    <main class="p-6 h-[calc(100vh-80px)] overflow-hidden">
+        {% if pending_orders or preparing_orders or ready_orders %}
+        <div class="grid grid-cols-3 gap-6 h-full">
+            <!-- PENDING / TO COOK Column -->
+            <div class="flex flex-col h-full">
+                <div class="bg-red-600 rounded-t-xl px-4 py-3 flex items-center justify-between">
+                    <h2 class="text-lg font-bold"><i class="fas fa-clock mr-2"></i>Pending</h2>
+                    <span class="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                        {{ pending_count }}
+                    </span>
+                </div>
+                <div class="flex-1 bg-gray-800/50 p-4 overflow-y-auto space-y-4" id="pendingColumn">
+                    {% for order in pending_orders %}
+                    <div class="kitchen-card bg-gray-800 rounded-xl overflow-hidden border-2 border-red-500 pulse-new" data-order-id="{{ order.id }}" data-status="sent_to_kitchen">
+                        <!-- Order Header -->
+                        <div class="p-3 bg-red-500 flex items-center justify-between">
+                            <div>
+                                <span class="text-xl font-bold">#{{ order.order_number }}</span>
+                                <span class="text-sm opacity-80 ml-2">
+                                    {% if order.table %}{{ order.table.name }}{% else %}{{ order.order_type|title }}{% endif %}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-lg font-bold" id="timer-{{ order.id }}">--:--</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Items -->
+                        <div class="p-3 space-y-1 max-h-40 overflow-y-auto">
+                            {% for line in order.lines.all %}
+                            <div class="flex items-center justify-between py-1 border-b border-gray-700 last:border-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-primary/20 text-primary rounded flex items-center justify-center font-bold text-sm">
+                                        {{ line.quantity|floatformat:0 }}
+                                    </span>
+                                    <span class="text-sm font-medium">{{ line.product.name }}</span>
+                                </div>
+                                {% if line.notes %}
+                                <span class="text-xs text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded truncate max-w-20">
+                                    {{ line.notes }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Action -->
+                        <div class="p-3 border-t border-gray-700">
+                            <form method="post" action="{% url 'kitchen_update_status' order.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="preparing">
+                                <button type="submit" class="w-full py-2 bg-orange-600 hover:bg-orange-700 rounded-lg font-bold transition text-sm">
+                                    <i class="fas fa-fire mr-2"></i>Start Cooking
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-inbox text-3xl mb-2"></i>
+                        <p class="text-sm">No pending orders</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- Pagination for Pending -->
+                {% if pending_orders.has_other_pages %}
+                <div class="bg-gray-800 rounded-b-xl px-4 py-2 flex items-center justify-between border-t border-gray-700">
+                    <span class="text-xs text-gray-400">Page {{ pending_orders.number }} of {{ pending_orders.paginator.num_pages }}</span>
+                    <div class="flex gap-2">
+                        {% if pending_orders.has_previous %}
+                        <a href="?pending_page={{ pending_orders.previous_page_number }}&preparing_page={{ preparing_orders.number }}&ready_page={{ ready_orders.number }}" 
+                           class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-chevron-left text-xs"></i>
+                        </a>
+                        {% endif %}
+                        {% if pending_orders.has_next %}
+                        <a href="?pending_page={{ pending_orders.next_page_number }}&preparing_page={{ preparing_orders.number }}&ready_page={{ ready_orders.number }}" 
+                           class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-chevron-right text-xs"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-gray-800 rounded-b-xl h-1"></div>
+                {% endif %}
+            </div>
+            
+            <!-- PREPARING Column -->
+            <div class="flex flex-col h-full">
+                <div class="bg-orange-500 rounded-t-xl px-4 py-3 flex items-center justify-between">
+                    <h2 class="text-lg font-bold"><i class="fas fa-fire mr-2"></i>Preparing</h2>
+                    <span class="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                        {{ preparing_count }}
+                    </span>
+                </div>
+                <div class="flex-1 bg-gray-800/50 p-4 overflow-y-auto space-y-4" id="preparingColumn">
+                    {% for order in preparing_orders %}
+                    <div class="kitchen-card bg-gray-800 rounded-xl overflow-hidden border-2 border-orange-500" data-order-id="{{ order.id }}" data-status="preparing">
+                        <!-- Order Header -->
+                        <div class="p-3 bg-orange-500 flex items-center justify-between">
+                            <div>
+                                <span class="text-xl font-bold">#{{ order.order_number }}</span>
+                                <span class="text-sm opacity-80 ml-2">
+                                    {% if order.table %}{{ order.table.name }}{% else %}{{ order.order_type|title }}{% endif %}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-lg font-bold" id="timer-{{ order.id }}">--:--</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Items -->
+                        <div class="p-3 space-y-1 max-h-40 overflow-y-auto">
+                            {% for line in order.lines.all %}
+                            <div class="flex items-center justify-between py-1 border-b border-gray-700 last:border-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-primary/20 text-primary rounded flex items-center justify-center font-bold text-sm">
+                                        {{ line.quantity|floatformat:0 }}
+                                    </span>
+                                    <span class="text-sm font-medium">{{ line.product.name }}</span>
+                                </div>
+                                {% if line.notes %}
+                                <span class="text-xs text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded truncate max-w-20">
+                                    {{ line.notes }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Action -->
+                        <div class="p-3 border-t border-gray-700">
+                            <form method="post" action="{% url 'kitchen_update_status' order.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="ready">
+                                <button type="submit" class="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition text-sm">
+                                    <i class="fas fa-check mr-2"></i>Ready
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-fire text-3xl mb-2"></i>
+                        <p class="text-sm">No orders cooking</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- Pagination for Preparing -->
+                {% if preparing_orders.has_other_pages %}
+                <div class="bg-gray-800 rounded-b-xl px-4 py-2 flex items-center justify-between border-t border-gray-700">
+                    <span class="text-xs text-gray-400">Page {{ preparing_orders.number }} of {{ preparing_orders.paginator.num_pages }}</span>
+                    <div class="flex gap-2">
+                        {% if preparing_orders.has_previous %}
+                        <a href="?pending_page={{ pending_orders.number }}&preparing_page={{ preparing_orders.previous_page_number }}&ready_page={{ ready_orders.number }}" 
+                           class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-chevron-left text-xs"></i>
+                        </a>
+                        {% endif %}
+                        {% if preparing_orders.has_next %}
+                        <a href="?pending_page={{ pending_orders.number }}&preparing_page={{ preparing_orders.next_page_number }}&ready_page={{ ready_orders.number }}" 
+                           class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-chevron-right text-xs"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-gray-800 rounded-b-xl h-1"></div>
+                {% endif %}
+            </div>
+            
+            <!-- READY Column -->
+            <div class="flex flex-col h-full">
+                <div class="bg-green-600 rounded-t-xl px-4 py-3 flex items-center justify-between">
+                    <h2 class="text-lg font-bold"><i class="fas fa-check-circle mr-2"></i>Ready</h2>
+                    <span class="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                        {{ ready_count }}
+                    </span>
+                </div>
+                <div class="flex-1 bg-gray-800/50 p-4 overflow-y-auto space-y-4" id="readyColumn">
+                    {% for order in ready_orders %}
+                    <div class="kitchen-card bg-gray-800 rounded-xl overflow-hidden border-2 border-green-500" data-order-id="{{ order.id }}" data-status="ready">
+                        <!-- Order Header -->
+                        <div class="p-3 bg-green-500 flex items-center justify-between">
+                            <div>
+                                <span class="text-xl font-bold">#{{ order.order_number }}</span>
+                                <span class="text-sm opacity-80 ml-2">
+                                    {% if order.table %}{{ order.table.name }}{% else %}{{ order.order_type|title }}{% endif %}
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-lg font-bold text-white" id="timer-{{ order.id }}">--:--</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Items -->
+                        <div class="p-3 space-y-1 max-h-40 overflow-y-auto">
+                            {% for line in order.lines.all %}
+                            <div class="flex items-center justify-between py-1 border-b border-gray-700 last:border-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 bg-green-500/20 text-green-400 rounded flex items-center justify-center font-bold text-sm">
+                                        {{ line.quantity|floatformat:0 }}
+                                    </span>
+                                    <span class="text-sm font-medium">{{ line.product.name }}</span>
+                                </div>
+                                {% if line.notes %}
+                                <span class="text-xs text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded truncate max-w-20">
+                                    {{ line.notes }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Action -->
+                        <div class="p-3 border-t border-gray-700">
+                            <form method="post" action="{% url 'kitchen_update_status' order.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="served">
+                                <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition text-sm">
+                                    <i class="fas fa-utensils mr-2"></i>Served
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-check-circle text-3xl mb-2"></i>
+                        <p class="text-sm">No orders ready</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <!-- Pagination for Ready -->
+                {% if ready_orders.has_other_pages %}
+                <div class="bg-gray-800 rounded-b-xl px-4 py-2 flex items-center justify-between border-t border-gray-700">
+                    <span class="text-xs text-gray-400">Page {{ ready_orders.number }} of {{ ready_orders.paginator.num_pages }}</span>
+                    <div class="flex gap-2">
+                        {% if ready_orders.has_previous %}
+                        <a href="?pending_page={{ pending_orders.number }}&preparing_page={{ preparing_orders.number }}&ready_page={{ ready_orders.previous_page_number }}" 
+                           class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-chevron-left text-xs"></i>
+                        </a>
+                        {% endif %}
+                        {% if ready_orders.has_next %}
+                        <a href="?pending_page={{ pending_orders.number }}&preparing_page={{ preparing_orders.number }}&ready_page={{ ready_orders.next_page_number }}" 
+                           class="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-chevron-right text-xs"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-gray-800 rounded-b-xl h-1"></div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-24 text-gray-500">
+            <div class="w-32 h-32 bg-gray-800 rounded-full mx-auto flex items-center justify-center mb-6">
+                <i class="fas fa-check-circle text-6xl text-green-500"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-2">All Caught Up!</h2>
+            <p class="text-xl">No pending orders in the kitchen</p>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Order timers
+    const orderTimes = {
+        {% for order in all_orders %}
+        '{{ order.id }}': new Date('{{ order.created_at|date:"c" }}').getTime(),
+        {% endfor %}
+    };
+    
+    function updateTimers() {
+        const now = Date.now();
+        for (const [id, created] of Object.entries(orderTimes)) {
+            const elapsed = Math.floor((now - created) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            const el = document.getElementById(`timer-${id}`);
+            if (el) {
+                el.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                // Color coding based on time
+                if (mins >= 15) {
+                    el.classList.add('text-red-300');
+                    el.classList.remove('text-yellow-300');
+                } else if (mins >= 10) {
+                    el.classList.add('text-yellow-300');
+                    el.classList.remove('text-red-300');
+                }
+            }
+        }
+    }
+    
+    updateTimers();
+    setInterval(updateTimers, 1000);
+    
+    // Auto-refresh every 30 seconds
+    setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

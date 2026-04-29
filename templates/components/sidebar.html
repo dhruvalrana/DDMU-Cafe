@@ -1,0 +1,128 @@
+<!-- Sidebar Navigation -->
+<aside class="w-20 lg:w-64 bg-gray-800 flex flex-col border-r border-gray-700 transition-all duration-300 no-print">
+    <!-- Logo -->
+    <div class="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-gray-700">
+        <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center">
+            <i class="fas fa-mug-hot text-lg"></i>
+        </div>
+        <span class="hidden lg:block ml-3 font-bold text-lg">DDMU Cafe</span>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="flex-1 py-4 overflow-y-auto">
+        <ul class="space-y-1 px-3">
+            {% if request.user.role != 'customer' %}
+            <li>
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-home w-5"></i>
+                    <span class="hidden lg:inline ml-3">Dashboard</span>
+                </a>
+            </li>
+            {% endif %}
+            <li>
+                <a href="{% url 'pos_terminal' %}" class="nav-link {% if 'pos' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-cash-register w-5"></i>
+                    <span class="hidden lg:inline ml-3">Point of Sale</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'order_list' %}" class="nav-link {% if 'order' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-receipt w-5"></i>
+                    <span class="hidden lg:inline ml-3">Orders</span>
+                </a>
+            </li>
+            {% if request.user.role != 'customer' %}
+            <li>
+                <a href="{% url 'kitchen_display' %}" class="nav-link {% if 'kitchen' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-utensils w-5"></i>
+                    <span class="hidden lg:inline ml-3">Kitchen Display</span>
+                </a>
+            </li>
+            {% endif %}
+            <li>
+                <a href="{% url 'table_list' %}" class="nav-link {% if 'table' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-chair w-5"></i>
+                    <span class="hidden lg:inline ml-3">Tables</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'product_list' %}" class="nav-link {% if 'product' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-box w-5"></i>
+                    <span class="hidden lg:inline ml-3">Products</span>
+                </a>
+            </li>
+            {% if request.user.role != 'customer' %}
+            <li>
+                <a href="{% url 'customer_list' %}" class="nav-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-users w-5"></i>
+                    <span class="hidden lg:inline ml-3">Customers</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'reports' %}" class="nav-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-chart-pie w-5"></i>
+                    <span class="hidden lg:inline ml-3">Reports</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        
+        {% if request.user.role != 'customer' %}
+        <div class="px-3 mt-6">
+            <p class="hidden lg:block text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Settings</p>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{% url 'settings' %}" class="nav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
+                        <i class="fas fa-cog w-5"></i>
+                        <span class="hidden lg:inline ml-3">Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        {% endif %}
+    </nav>
+    
+    <!-- User Profile -->
+    <div class="p-3 border-t border-gray-700">
+        <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-700 transition cursor-pointer">
+            <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-gray-400"></i>
+            </div>
+            <div class="hidden lg:block flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ request.user.get_full_name|default:request.user.email }}</p>
+                <p class="text-xs text-gray-400 truncate">{{ request.user.role|default:'Staff' }}</p>
+            </div>
+            <a href="{% url 'logout' %}" class="hidden lg:block text-gray-400 hover:text-red-400">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </div>
+</aside>
+
+<style>
+    .nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        color: #9ca3af;
+        transition: all 0.2s;
+    }
+    
+    @media (min-width: 1024px) {
+        .nav-link {
+            justify-content: flex-start;
+        }
+    }
+    
+    .nav-link:hover {
+        background: #374151;
+        color: #fff;
+    }
+    
+    .nav-link.active {
+        background: linear-gradient(135deg, #f97316, #ec4899);
+        color: #fff;
+    }
+</style>

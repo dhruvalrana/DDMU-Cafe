@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Customers - DDMU Cafe{% endblock %}
+
+{% block body %}
+<div class="flex h-screen">
+    {% include 'components/sidebar.html' %}
+    
+    <main class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/header.html' with title="Customers" show_search=True action_url=add_url action_text="Add Customer" action_icon="user-plus" %}
+        
+        <div class="flex-1 overflow-hidden p-6">
+            <div class="h-full bg-gray-800 rounded-2xl overflow-hidden flex flex-col">
+                <!-- Table -->
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-700/50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Customer</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Contact</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Orders</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Total Spent</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Loyalty Points</th>
+                                <th class="px-6 py-4 text-right text-sm font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            {% for customer in customers %}
+                            <tr class="hover:bg-gray-700/30 transition">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center font-bold">
+                                            {{ customer.name|slice:":1"|upper }}
+                                        </div>
+                                        <div>
+                                            <p class="font-medium">{{ customer.name }}</p>
+                                            <p class="text-sm text-gray-400">Since {{ customer.created_at|date:"M Y" }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="text-sm">{{ customer.phone|default:'-' }}</p>
+                                    <p class="text-sm text-gray-400">{{ customer.email|default:'-' }}</p>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-lg font-semibold">{{ customer.order_count|default:0 }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="text-lg font-semibold text-green-400">₹{{ customer.total_spent|default:0|floatformat:0 }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-semibold text-yellow-400">{{ customer.loyalty_points|default:0 }}</span>
+                                        <i class="fas fa-star text-yellow-400"></i>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a href="{% url 'customer_detail' customer.id %}" 
+                                           class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'customer_edit' customer.id %}" 
+                                           class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                    <i class="fas fa-users text-5xl mb-4"></i>
+                                    <p class="text-lg">No customers yet</p>
+                                    <a href="{{ add_url }}" class="inline-block mt-4 px-6 py-3 gradient-bg rounded-xl font-medium">
+                                        <i class="fas fa-user-plus mr-2"></i>Add Customer
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if customers.has_other_pages %}
+                <div class="flex justify-center gap-2 p-4 border-t border-gray-700">
+                    {% if customers.has_previous %}
+                    <a href="?page={{ customers.previous_page_number }}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    {% endif %}
+                    <span class="px-4 py-2 bg-gray-900 rounded-lg">
+                        Page {{ customers.number }} of {{ customers.paginator.num_pages }}
+                    </span>
+                    {% if customers.has_next %}
+                    <a href="?page={{ customers.next_page_number }}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

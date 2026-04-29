@@ -1,0 +1,66 @@
+<!-- Header Component -->
+<header class="h-16 bg-gray-800 px-6 flex items-center justify-between border-b border-gray-700 shrink-0 no-print">
+    <div class="flex items-center gap-4">
+        <h1 class="text-xl font-semibold">{{ title }}</h1>
+        {% if subtitle %}
+        <span class="text-gray-400">{{ subtitle }}</span>
+        {% endif %}
+    </div>
+    
+    <div class="flex items-center gap-4">
+        <!-- Search (optional) -->
+        {% if show_search %}
+        <div class="relative hidden md:block">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+            <input type="text" id="globalSearch" placeholder="Search..." 
+                class="pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent w-64">
+        </div>
+        {% endif %}
+        
+        <!-- Session Status -->
+        {% if show_session %}
+        <div id="sessionBadge" class="px-4 py-2 rounded-full text-sm flex items-center gap-2
+            {% if active_session %}bg-green-500/20 text-green-400{% else %}bg-red-500/20 text-red-400{% endif %}">
+            <i class="fas fa-circle text-xs"></i>
+            <span>{% if active_session %}Session Active{% else %}No Session{% endif %}</span>
+        </div>
+        {% endif %}
+        
+        <!-- Clock -->
+        <span id="clock" class="text-gray-400 hidden lg:block"></span>
+        
+        <!-- Action Button -->
+        {% if action_url %}
+        <a href="{{ action_url }}" class="px-4 py-2 gradient-bg rounded-lg font-medium flex items-center gap-2 hover:opacity-90 transition">
+            <i class="fas fa-{{ action_icon|default:'plus' }}"></i>
+            <span class="hidden sm:inline">{{ action_text }}</span>
+        </a>
+        {% endif %}
+        
+        <!-- Notifications -->
+        <button class="relative p-2 text-gray-400 hover:text-white transition">
+            <i class="fas fa-bell text-xl"></i>
+            {% if notification_count %}
+            <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
+                {{ notification_count }}
+            </span>
+            {% endif %}
+        </button>
+    </div>
+</header>
+
+<script>
+    // Clock
+    function updateClock() {
+        const clock = document.getElementById('clock');
+        if (clock) {
+            clock.textContent = new Date().toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+            });
+        }
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+</script>
